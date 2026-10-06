@@ -93,6 +93,7 @@ export function BackgroundFx() {
           color={rain.color}
           headColor={rain.head}
           glow={rain.glow}
+          glyphs={rain.glyphs}
         />
       )}
       <div className="bg-grid" />
@@ -106,11 +107,7 @@ export function BackgroundFx() {
 export function Logo() {
   return (
     <>
-      <div className="sidebar-logo-icon">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-        </svg>
-      </div>
+      <img className="brand-logo" src="/hx-logo.png" alt="HX" />
       <span className="sidebar-logo-text">Jev router</span>
     </>
   );

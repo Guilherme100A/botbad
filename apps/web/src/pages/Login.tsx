@@ -28,11 +28,7 @@ export function Login() {
       <BackgroundFx />
       <div className="login-card">
         <div className="login-logo">
-          <div className="sidebar-logo-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-            </svg>
-          </div>
+          <img className="brand-logo brand-logo-lg" src="/hx-logo.png" alt="HX" />
           <h1 className="login-title">Jev router</h1>
           <p className="login-sub">Entre para continuar</p>
         </div>
