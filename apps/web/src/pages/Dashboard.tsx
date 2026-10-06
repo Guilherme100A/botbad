@@ -40,29 +40,23 @@ export function Dashboard() {
     <>
       <div className="welcome-banner">
         <div className="welcome-text">
-          <h2>Bem-vindo ao JEV Traffic Router</h2>
-          <p>Configure campanhas de roteamento inteligente. O motor JEV classifica visitantes e direciona ao destino correto.</p>
+          <h2>Roteador de trafego</h2>
+          <p>Classifique visitantes e direcione ao destino correto. <a href="#/campaigns" style={{ textDecoration: 'none' }}>Criar campanha</a></p>
         </div>
-        <a href="#/campaigns" className="btn btn-primary" style={{ textDecoration: 'none', flexShrink: 0 }}>
-          + Nova campanha
-        </a>
       </div>
 
       <div className="onboarding">
         <div className="onboarding-step">
-          <div className="onboarding-num">1</div>
           <div className="onboarding-title">Configurar destinos</div>
-          <div className="onboarding-desc">Defina a pagina principal (humanos) e alternativa (bots).</div>
+          <div className="onboarding-desc">Defina destinos para humanos e bots.</div>
         </div>
         <div className="onboarding-step">
-          <div className="onboarding-num">2</div>
           <div className="onboarding-title">Simular cenarios</div>
-          <div className="onboarding-desc">Teste os 4 perfis de visitante com dados de fixture.</div>
+          <div className="onboarding-desc">Teste perfis de visitante com fixture.</div>
         </div>
         <div className="onboarding-step">
-          <div className="onboarding-num">3</div>
           <div className="onboarding-title">Ativar roteamento</div>
-          <div className="onboarding-desc">Ative a campanha e monitore as decisoes em tempo real.</div>
+          <div className="onboarding-desc">Monitore decisoes em tempo real.</div>
         </div>
       </div>
 
@@ -75,7 +69,7 @@ export function Dashboard() {
           </div>
           <div className="card">
             <div className="card-label">Ativas</div>
-            <div className="card-value" style={{ color: 'var(--green)' }}>{activeCampaigns}</div>
+            <div className="card-value" style={{ color: 'var(--positive)' }}>{activeCampaigns}</div>
           </div>
           <div className="card">
             <div className="card-label">Motor</div>
@@ -103,12 +97,12 @@ export function Dashboard() {
           </div>
           <div className="card">
             <div className="card-label">Pagina principal</div>
-            <div className="card-value" style={{ color: 'var(--green)' }}>{s.routePrimary.toLocaleString('pt-BR')}</div>
+            <div className="card-value" style={{ color: 'var(--positive)' }}>{s.routePrimary.toLocaleString('pt-BR')}</div>
             <div className="card-sub">{((s.routePrimary / s.totalAccesses) * 100).toFixed(1)}% dos acessos</div>
           </div>
           <div className="card">
             <div className="card-label">Pagina alternativa</div>
-            <div className="card-value" style={{ color: 'var(--red)' }}>{s.routeAlternative.toLocaleString('pt-BR')}</div>
+            <div className="card-value" style={{ color: 'var(--negative)' }}>{s.routeAlternative.toLocaleString('pt-BR')}</div>
             <div className="card-sub">{((s.routeAlternative / s.totalAccesses) * 100).toFixed(1)}% dos acessos</div>
           </div>
           <div className="card">

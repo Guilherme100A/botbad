@@ -129,7 +129,7 @@ export function Layout({ route, children }: LayoutProps) {
           </div>
           <div className="sidebar-status">
             <span className={`sidebar-status-dot ${healthy ? 'ok' : 'err'}`} />
-            Motor {healthy ? 'operacional' : 'indisponivel'} &middot; v0.1
+            Motor {healthy ? 'operacional' : 'indisponivel'} — v0.1
           </div>
         </div>
       </nav>
@@ -151,7 +151,7 @@ export function Layout({ route, children }: LayoutProps) {
             <h1 className="page-title">{PAGE_TITLES[route] ?? ''}</h1>
             <span className="page-subtitle">{PAGE_SUBTITLES[route] ?? ''}</span>
           </div>
-          <span className="demo-badge">Demo</span>
+          <span className="demo-badge" />
         </div>
 
         <main className="page-content">
