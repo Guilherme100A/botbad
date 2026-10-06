@@ -21,6 +21,16 @@ import {
   REASON_LABELS,
 } from '../mock/data.js';
 
+/** The form shows "https://" as a fixed prefix; state keeps the full URL. */
+function stripScheme(url: string): string {
+  return url.replace(/^https?:\/\//i, '');
+}
+
+function toHttps(raw: string): string {
+  const rest = stripScheme(raw.trim());
+  return rest ? `https://${rest}` : '';
+}
+
 export function Campaigns() {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [destinations, setDestinations] = useState<Destination[]>([]);
@@ -64,6 +74,8 @@ export function Campaigns() {
     setFormError('');
 
     if (!formName.trim()) { setFormError('Nome é obrigatório.'); return; }
+    if (!formPrimaryUrl) { setFormError('Informe o destino principal.'); return; }
+    if (!formAltUrl) { setFormError('Informe o destino alternativo.'); return; }
     if (!formPrimaryUrl.startsWith('https://')) { setFormError('Destino principal deve usar https.'); return; }
     if (!formAltUrl.startsWith('https://')) { setFormError('Destino alternativo deve usar https.'); return; }
     if (formPrimaryUrl === formAltUrl) { setFormError('Os destinos devem ser distintos.'); return; }
@@ -108,7 +120,9 @@ export function Campaigns() {
       label: `Destino alternativo — ${formName}`,
       createdAt: now, updatedAt: now,
     };
-    const slug = formName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '').slice(0, 128);
+    const slug = formName
+      .normalize('NFD').replace(/[̀-ͯ]/g, '') // "verão" -> "verao", not "vero"
+      .toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '').slice(0, 128);
     const campaign: Campaign = {
       id: `c-new-${n}-0000-4000-a000-000000000001`,
       tenantId: '00000000-0000-4000-a000-000000000001',
@@ -268,74 +282,118 @@ export function Campaigns() {
       })()}
 
       {showCreate && (
-        <div className="overlay" onClick={() => setShowCreate(false)}>
-          <div className="modal" onClick={e => e.stopPropagation()}>
-            <h3 className="modal-title">Nova campanha</h3>
-            <p className="modal-desc">
-              Visitantes humanos recebem a página principal. Bots e automação recebem a alternativa.
-            </p>
-
-            {formError && <div className="error-box">{formError}</div>}
-
-            <div className="form-group">
-              <label className="form-label">Nome da campanha</label>
-              <input
-                value={formName}
-                onChange={e => setFormName(e.target.value)}
-                placeholder="Ex.: Oferta de verao"
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Destino principal (https)</label>
-              <input
-                value={formPrimaryUrl}
-                onChange={e => setFormPrimaryUrl(e.target.value)}
-                placeholder="https://exemplo.com/landing"
-              />
-              <div className="form-hint">Página mostrada a clientes prováveis.</div>
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Destino alternativo (https)</label>
-              <input
-                value={formAltUrl}
-                onChange={e => setFormAltUrl(e.target.value)}
-                placeholder="https://exemplo.com/alt"
-              />
-              <div className="form-hint">Página mostrada a bots e automação.</div>
-            </div>
-
-            <button
-              className="advanced-toggle"
-              onClick={() => setShowAdvanced(v => !v)}
-              type="button"
-            >
-              {showAdvanced ? '▾' : '▸'} Opções avançadas
-            </button>
-
-            {showAdvanced && (
-              <div className="form-group">
-                <label className="form-label">Origem da campanha (opcional)</label>
-                <select
-                  value={formProfile}
-                  onChange={e => setFormProfile(e.target.value as NetworkProfile)}
-                >
-                  {(Object.entries(NETWORK_PROFILE_LABELS) as [NetworkProfile, string][]).map(([k, v]) => (
-                    <option key={k} value={k}>{v}</option>
-                  ))}
-                </select>
-                <div className="form-hint">Contexto para relatórios. Não prova de onde o visitante veio.</div>
+        <div className="overlay" onClick={() => !formLoading && setShowCreate(false)}>
+          <form
+            className="modal modal-create"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="create-title"
+            onClick={e => e.stopPropagation()}
+            onKeyDown={e => { if (e.key === 'Escape' && !formLoading) setShowCreate(false); }}
+            onSubmit={e => { e.preventDefault(); handleCreate(); }}
+          >
+            <header className="mc-head">
+              <span className="mc-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+              </span>
+              <div className="mc-head-text">
+                <h3 className="modal-title" id="create-title">Nova campanha</h3>
+                <p className="modal-desc">Defina para onde vai cada tipo de visitante.</p>
               </div>
-            )}
+              <button type="button" className="mc-close" onClick={() => setShowCreate(false)} disabled={formLoading} aria-label="Fechar">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+              </button>
+            </header>
 
-            <div className="modal-actions">
-              <button className="btn btn-secondary" onClick={() => setShowCreate(false)} disabled={formLoading}>Cancelar</button>
-              <button className="btn btn-primary" onClick={handleCreate} disabled={formLoading}>
+            <div className="mc-body">
+              {formError && <div className="error-box">{formError}</div>}
+
+              <label className="mc-field">
+                <span className="form-label">Nome da campanha</span>
+                <span className="mc-input">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"/><circle cx="7.5" cy="7.5" r="1.2"/></svg>
+                  <input
+                    value={formName}
+                    onChange={e => setFormName(e.target.value)}
+                    placeholder="Ex.: Oferta de verão"
+                    autoFocus
+                  />
+                </span>
+              </label>
+
+              <div className="mc-routes">
+                <label className="mc-route mc-route-primary">
+                  <span className="mc-route-head">
+                    <span className="mc-dot" />
+                    <span className="mc-route-who">Humanos</span>
+                    <span className="mc-route-arrow">→</span>
+                    <span className="mc-route-dest">Página principal</span>
+                  </span>
+                  <span className="mc-input mc-url">
+                    <span className="mc-prefix">https://</span>
+                    <input
+                      value={stripScheme(formPrimaryUrl)}
+                      onChange={e => setFormPrimaryUrl(toHttps(e.target.value))}
+                      placeholder="exemplo.com/landing"
+                      inputMode="url"
+                      spellCheck={false}
+                    />
+                  </span>
+                </label>
+
+                <label className="mc-route mc-route-alt">
+                  <span className="mc-route-head">
+                    <span className="mc-dot" />
+                    <span className="mc-route-who">Bots e automação</span>
+                    <span className="mc-route-arrow">→</span>
+                    <span className="mc-route-dest">Página alternativa</span>
+                  </span>
+                  <span className="mc-input mc-url">
+                    <span className="mc-prefix">https://</span>
+                    <input
+                      value={stripScheme(formAltUrl)}
+                      onChange={e => setFormAltUrl(toHttps(e.target.value))}
+                      placeholder="exemplo.com/alt"
+                      inputMode="url"
+                      spellCheck={false}
+                    />
+                  </span>
+                </label>
+              </div>
+
+              <button
+                className={`mc-advanced ${showAdvanced ? 'open' : ''}`}
+                onClick={() => setShowAdvanced(v => !v)}
+                type="button"
+                aria-expanded={showAdvanced}
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+                Opções avançadas
+              </button>
+
+              {showAdvanced && (
+                <label className="mc-field mc-advanced-body">
+                  <span className="form-label">Origem da campanha <span className="mc-optional">opcional</span></span>
+                  <select
+                    value={formProfile}
+                    onChange={e => setFormProfile(e.target.value as NetworkProfile)}
+                  >
+                    {(Object.entries(NETWORK_PROFILE_LABELS) as [NetworkProfile, string][]).map(([k, v]) => (
+                      <option key={k} value={k}>{v}</option>
+                    ))}
+                  </select>
+                  <span className="form-hint">Contexto para relatórios. Não prova de onde o visitante veio.</span>
+                </label>
+              )}
+            </div>
+
+            <footer className="mc-foot">
+              <button type="button" className="btn btn-secondary" onClick={() => setShowCreate(false)} disabled={formLoading}>Cancelar</button>
+              <button type="submit" className="btn btn-primary" disabled={formLoading}>
                 {formLoading ? 'Criando…' : 'Criar campanha'}
               </button>
-            </div>
-          </div>
+            </footer>
+          </form>
         </div>
       )}
     </>
