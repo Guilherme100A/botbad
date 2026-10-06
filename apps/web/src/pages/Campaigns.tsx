@@ -63,9 +63,9 @@ export function Campaigns() {
   async function handleCreate() {
     setFormError('');
 
-    if (!formName.trim()) { setFormError('Nome e obrigatorio.'); return; }
-    if (!formPrimaryUrl.startsWith('https://')) { setFormError('Destino principal deve usar HTTPS.'); return; }
-    if (!formAltUrl.startsWith('https://')) { setFormError('Destino alternativo deve usar HTTPS.'); return; }
+    if (!formName.trim()) { setFormError('Nome é obrigatório.'); return; }
+    if (!formPrimaryUrl.startsWith('https://')) { setFormError('Destino principal deve usar https.'); return; }
+    if (!formAltUrl.startsWith('https://')) { setFormError('Destino alternativo deve usar https.'); return; }
     if (formPrimaryUrl === formAltUrl) { setFormError('Os destinos devem ser distintos.'); return; }
 
     if (usingApi) {
@@ -160,7 +160,7 @@ export function Campaigns() {
   }
 
   if (loading) {
-    return <div className="loading"><div className="spinner" />Carregando campanhas...</div>;
+    return <div className="loading"><div className="spinner" />Carregando campanhas…</div>;
   }
 
   if (campaigns.length === 0 && !showCreate) {
@@ -173,8 +173,8 @@ export function Campaigns() {
           </svg>
         </div>
         <div className="empty-state-title">Nenhuma campanha</div>
-        <div className="empty-state-desc">Crie sua primeira campanha para comecar a rotear trafego de forma inteligente.</div>
-        <button className="btn btn-primary" onClick={() => setShowCreate(true)}>+ Criar primeira campanha</button>
+        <div className="empty-state-desc">Crie sua primeira campanha para começar a rotear tráfego de forma inteligente.</div>
+        <button className="btn btn-primary" onClick={() => setShowCreate(true)}>Criar primeira campanha</button>
       </div>
     );
   }
@@ -182,11 +182,11 @@ export function Campaigns() {
   return (
     <>
       <div className="section-header">
-        <h2 className="section-title" style={{ margin: 0 }}>Campanhas ({campaigns.length})</h2>
-        <button className="btn btn-primary btn-sm" onClick={() => setShowCreate(true)}>+ Nova campanha</button>
+        <h2 className="section-title" style={{ margin: 0 }}>Todas<span className="count">{campaigns.length}</span></h2>
+        <button className="btn btn-primary btn-sm" onClick={() => setShowCreate(true)}>Nova campanha</button>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 12 }}>
+      <div className="campaign-grid">
         {campaigns.map(c => {
           const isExpanded = simulating === c.id;
           const isLoading = actionLoading === c.id;
@@ -204,7 +204,7 @@ export function Campaigns() {
                 </span>
                 <span>
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
-                  /r/{c.slug}
+                  <span className="mono">/r/{c.slug}</span>
                 </span>
               </div>
               <div className="campaign-card-actions">
@@ -222,7 +222,7 @@ export function Campaigns() {
                     disabled={isLoading}
                     style={{ flex: 1 }}
                   >
-                    {isLoading ? '...' : c.status === 'active' ? 'Pausar' : 'Ativar'}
+                    {isLoading ? '…' : c.status === 'active' ? 'Pausar' : 'Ativar'}
                   </button>
                 )}
               </div>
@@ -239,9 +239,9 @@ export function Campaigns() {
 
         return (
           <div className="section" style={{ marginTop: 24 }}>
-            <h3 className="section-title">Simulacao — {campaign.name}</h3>
-            <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 14 }}>
-              Resultados de fixture identificados como dados demonstrativos. Nao representam decisoes reais do Jev.
+            <h3 className="section-title">Simulação — {campaign.name}</h3>
+            <p style={{ fontSize: 14, color: 'var(--text-3)', marginBottom: 18 }}>
+              Resultados de fixture identificados como dados demonstrativos. Não representam decisões reais do Jev.
             </p>
             {SIMULATION_SCENARIOS.map(sc => {
               const dest = sc.expectedAction === 'route_primary' ? primaryDest : altDest;
@@ -258,7 +258,7 @@ export function Campaigns() {
                     <strong>Origem:</strong> {SOURCE_LABELS[sc.expectedSource]} &middot;{' '}
                     <strong>Motivo:</strong> {REASON_LABELS[sc.expectedReasonCode]}<br />
                     {dest && <><strong>Destino:</strong> {dest.url}</>}
-                    {sc.expectedAssessment && <><br /><strong>Classificacao:</strong> {sc.expectedAssessment}</>}
+                    {sc.expectedAssessment && <><br /><strong>Classificação:</strong> {sc.expectedAssessment}</>}
                   </div>
                 </div>
               );
@@ -272,7 +272,7 @@ export function Campaigns() {
           <div className="modal" onClick={e => e.stopPropagation()}>
             <h3 className="modal-title">Nova campanha</h3>
             <p className="modal-desc">
-              Visitantes humanos recebem a pagina principal. Bots e automacao recebem a alternativa.
+              Visitantes humanos recebem a página principal. Bots e automação recebem a alternativa.
             </p>
 
             {formError && <div className="error-box">{formError}</div>}
@@ -282,28 +282,28 @@ export function Campaigns() {
               <input
                 value={formName}
                 onChange={e => setFormName(e.target.value)}
-                placeholder="Ex: Oferta de Verao"
+                placeholder="Ex.: Oferta de verao"
               />
             </div>
 
             <div className="form-group">
-              <label className="form-label">Destino principal (HTTPS)</label>
+              <label className="form-label">Destino principal (https)</label>
               <input
                 value={formPrimaryUrl}
                 onChange={e => setFormPrimaryUrl(e.target.value)}
                 placeholder="https://exemplo.com/landing"
               />
-              <div className="form-hint">Pagina mostrada a clientes provaveis.</div>
+              <div className="form-hint">Página mostrada a clientes prováveis.</div>
             </div>
 
             <div className="form-group">
-              <label className="form-label">Destino alternativo (HTTPS)</label>
+              <label className="form-label">Destino alternativo (https)</label>
               <input
                 value={formAltUrl}
                 onChange={e => setFormAltUrl(e.target.value)}
                 placeholder="https://exemplo.com/alt"
               />
-              <div className="form-hint">Pagina mostrada a bots e automacao.</div>
+              <div className="form-hint">Página mostrada a bots e automação.</div>
             </div>
 
             <button
@@ -311,7 +311,7 @@ export function Campaigns() {
               onClick={() => setShowAdvanced(v => !v)}
               type="button"
             >
-              {showAdvanced ? '▾' : '▸'} Opcoes avancadas
+              {showAdvanced ? '▾' : '▸'} Opções avançadas
             </button>
 
             {showAdvanced && (
@@ -325,14 +325,14 @@ export function Campaigns() {
                     <option key={k} value={k}>{v}</option>
                   ))}
                 </select>
-                <div className="form-hint">Contexto para relatorios. Nao prova de onde o visitante veio.</div>
+                <div className="form-hint">Contexto para relatórios. Não prova de onde o visitante veio.</div>
               </div>
             )}
 
             <div className="modal-actions">
               <button className="btn btn-secondary" onClick={() => setShowCreate(false)} disabled={formLoading}>Cancelar</button>
               <button className="btn btn-primary" onClick={handleCreate} disabled={formLoading}>
-                {formLoading ? 'Criando...' : 'Criar campanha'}
+                {formLoading ? 'Criando…' : 'Criar campanha'}
               </button>
             </div>
           </div>

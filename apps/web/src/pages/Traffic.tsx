@@ -55,7 +55,7 @@ export function Traffic() {
   }, []);
 
   if (loading) {
-    return <div className="loading"><div className="spinner" />Carregando decisoes...</div>;
+    return <div className="loading"><div className="spinner" />Carregando decisões...</div>;
   }
 
   const recent = events.slice(0, 15);
@@ -68,26 +68,26 @@ export function Traffic() {
             <path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/>
           </svg>
         </div>
-        <div className="empty-state-title">Nenhuma decisao recente</div>
-        <div className="empty-state-desc">As decisoes de roteamento aparecerao aqui.</div>
+        <div className="empty-state-title">Nenhuma decisão recente</div>
+        <div className="empty-state-desc">As decisões de roteamento aparecerão aqui.</div>
       </div>
     );
   }
 
   return (
     <div className="section">
-      <h2 className="section-title">Decisoes recentes</h2>
+      <h2 className="section-title">Decisões recentes</h2>
       <div className="table-wrap">
         <table>
           <thead>
             <tr>
               <th>Hora</th>
               <th>Campanha</th>
-              <th>Acao</th>
+              <th>Ação</th>
               <th>Destino</th>
               <th>Origem</th>
               <th>Motivo</th>
-              <th>Duracao</th>
+              <th>Duração</th>
             </tr>
           </thead>
           <tbody>
@@ -99,17 +99,17 @@ export function Traffic() {
 
               return (
                 <tr key={ev.id}>
-                  <td style={{ fontFamily: 'monospace', fontSize: 12 }}>{timeStr}</td>
-                  <td style={{ fontSize: 13 }}>{campaign?.name ?? '—'}</td>
+                  <td className="num">{timeStr}</td>
+                  <td>{campaign?.name ?? '—'}</td>
                   <td><span className={`badge badge-${ev.action}`}>{ACTION_LABELS[ev.action]}</span></td>
-                  <td style={{ fontSize: 12, maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <td className="mono truncate">
                     {dest?.url ?? '—'}
                   </td>
-                  <td style={{ fontSize: 12 }}>{SOURCE_LABELS[ev.source]}</td>
-                  <td style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
+                  <td>{SOURCE_LABELS[ev.source]}</td>
+                  <td className="dim">
                     {REASON_LABELS[ev.reasonCode] ?? ev.reasonCode}
                   </td>
-                  <td style={{ fontFamily: 'monospace', fontSize: 12 }}>{ev.durationMs}ms</td>
+                  <td className="num">{ev.durationMs}ms</td>
                 </tr>
               );
             })}

@@ -4,67 +4,48 @@ export function Engine() {
   const e = engineStatus;
   const budgetPct = (e.budgetUsedTokens / e.budgetLimitTokens) * 100;
 
+  const rows: { label: string; value: React.ReactNode; mono?: boolean }[] = [
+    { label: 'Modelo', value: e.model, mono: true },
+    { label: 'Versão da política', value: e.policyVersion, mono: true },
+    { label: 'Versão do perfil', value: e.profileVersion, mono: true },
+    { label: 'Modo', value: e.mode === 'shadow' ? 'Shadow (observação)' : 'Ativo' },
+    { label: 'Timeout', value: `${e.timeoutMs.toLocaleString('pt-BR')} ms`, mono: true },
+    { label: 'Último health check', value: new Date(e.lastHealthCheck).toLocaleString('pt-BR') },
+  ];
+
   return (
     <>
-      <div className="section">
-        <h2 className="section-title">Motor JEV</h2>
-        <div className="info-grid">
-          <div className="info-item">
-            <div className="info-label">Modelo</div>
-            <div className="info-value">{e.model}</div>
-          </div>
-          <div className="info-item">
-            <div className="info-label">Versao da politica</div>
-            <div className="info-value">{e.policyVersion}</div>
-          </div>
-          <div className="info-item">
-            <div className="info-label">Versao do perfil</div>
-            <div className="info-value">{e.profileVersion}</div>
-          </div>
-          <div className="info-item">
-            <div className="info-label">Modo</div>
-            <div className="info-value" style={{ textTransform: 'capitalize' }}>
-              {e.mode === 'shadow' ? 'Shadow (observacao)' : 'Ativo'}
-            </div>
-          </div>
-          <div className="info-item">
-            <div className="info-label">Timeout</div>
-            <div className="info-value">{e.timeoutMs.toLocaleString('pt-BR')}ms</div>
-          </div>
-          <div className="info-item">
-            <div className="info-label">Saude</div>
-            <div className="info-value">
-              <span className={`health-dot ${e.healthy ? 'ok' : 'err'}`} />
-              {e.healthy ? 'Operacional' : 'Indisponivel'}
-            </div>
+      <div className="card-grid section">
+        <div className="card">
+          <div className="card-label">Saúde</div>
+          <div className="card-value-sm" style={{ height: 35 }}>
+            <span className={`health-dot ${e.healthy ? 'ok' : 'err'}`} />
+            {e.healthy ? 'Operacional' : 'Indisponível'}
           </div>
         </div>
-      </div>
-
-      <div className="section">
-        <h2 className="section-title">Orcamento de tokens</h2>
-        <div className="card" style={{ maxWidth: 480 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-            <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Consumo</span>
-            <span style={{ fontSize: 12, fontWeight: 600 }}>
-              {e.budgetUsedTokens.toLocaleString('pt-BR')} / {e.budgetLimitTokens.toLocaleString('pt-BR')}
-            </span>
+        <div className="card span-2">
+          <div className="card-label">Orçamento de tokens</div>
+          <div className="card-value">
+            {budgetPct.toFixed(1).replace('.', ',')}<span className="unit">%</span>
           </div>
-          <div className="progress-bar">
+          <div className="progress-bar" style={{ marginTop: 12 }}>
             <div className="progress-fill" style={{ width: `${budgetPct}%` }} />
           </div>
-          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6 }}>
-            {budgetPct.toFixed(1)}% utilizado
+          <div className="card-sub num">
+            {e.budgetUsedTokens.toLocaleString('pt-BR')} / {e.budgetLimitTokens.toLocaleString('pt-BR')}
           </div>
         </div>
       </div>
 
       <div className="section">
-        <h2 className="section-title">Ultimo health check</h2>
-        <div className="card" style={{ maxWidth: 480 }}>
-          <div style={{ fontSize: 13 }}>
-            {new Date(e.lastHealthCheck).toLocaleString('pt-BR')}
-          </div>
+        <h2 className="section-title">Configuração</h2>
+        <div className="list">
+          {rows.map(r => (
+            <div className="list-row" key={r.label}>
+              <div className="list-row-main list-row-title">{r.label}</div>
+              <div className={`list-row-value ${r.mono ? 'num' : ''}`} style={{ color: 'var(--text-2)' }}>{r.value}</div>
+            </div>
+          ))}
         </div>
       </div>
     </>

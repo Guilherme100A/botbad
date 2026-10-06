@@ -26,7 +26,7 @@ export function Dashboard() {
     return (
       <div className="loading">
         <div className="spinner" />
-        Carregando painel...
+        Carregando painel…
       </div>
     );
   }
@@ -36,105 +36,91 @@ export function Dashboard() {
   const totalCampaigns = campaigns.length;
   const budgetPct = (engineStatus.budgetUsedTokens / engineStatus.budgetLimitTokens) * 100;
 
+  const fmt = (n: number) => n.toLocaleString('pt-BR');
+  const pct = (n: number) => `${((n / s.totalAccesses) * 100).toFixed(1).replace('.', ',')}%`;
+
+  const split = [
+    { key: 'primary', label: 'Página principal', value: s.routePrimary, cls: 'c-primary' },
+    { key: 'alt', label: 'Página alternativa', value: s.routeAlternative, cls: 'c-alt' },
+    { key: 'challenge', label: 'Desafio', value: s.challenge, cls: 'c-challenge' },
+    { key: 'deny', label: 'Negado', value: s.deny, cls: 'c-deny' },
+  ];
+
+  const sources = [
+    { label: 'Jev', sub: 'Classificação pelo motor', value: s.decisionSources.jev },
+    { label: 'Regra', sub: 'Bots verificados e limites', value: s.decisionSources.rule },
+    { label: 'Cache', sub: 'Decisões reutilizadas', value: s.decisionSources.cache },
+    { label: 'Fallback', sub: 'Motor indisponível', value: s.decisionSources.fallback },
+  ];
+  const sourcesTotal = sources.reduce((a, x) => a + x.value, 0);
+
   return (
     <>
-      <div className="welcome-banner">
-        <div className="welcome-text">
-          <h2>Roteador de trafego</h2>
-          <p>Classifique visitantes e direcione ao destino correto. <a href="#/campaigns" style={{ textDecoration: 'none' }}>Criar campanha</a></p>
-        </div>
-      </div>
-
-      <div className="onboarding">
-        <div className="onboarding-step">
-          <div className="onboarding-title">Configurar destinos</div>
-          <div className="onboarding-desc">Defina destinos para humanos e bots.</div>
-        </div>
-        <div className="onboarding-step">
-          <div className="onboarding-title">Simular cenarios</div>
-          <div className="onboarding-desc">Teste perfis de visitante com fixture.</div>
-        </div>
-        <div className="onboarding-step">
-          <div className="onboarding-title">Ativar roteamento</div>
-          <div className="onboarding-desc">Monitore decisoes em tempo real.</div>
-        </div>
-      </div>
-
-      <div className="section">
-        <h2 className="section-title">Campanhas</h2>
-        <div className="card-grid">
-          <div className="card">
-            <div className="card-label">Total</div>
-            <div className="card-value">{totalCampaigns}</div>
+      <section className="hero">
+        <div className="hero-top">
+          <div>
+            <div className="hero-eyebrow">Acessos totais</div>
+            <div className="hero-value">{fmt(s.totalAccesses)}</div>
+            <div className="hero-caption">{pct(s.routePrimary)} chegaram à página principal</div>
           </div>
-          <div className="card">
-            <div className="card-label">Ativas</div>
-            <div className="card-value" style={{ color: 'var(--positive)' }}>{activeCampaigns}</div>
-          </div>
-          <div className="card">
-            <div className="card-label">Motor</div>
-            <div className="card-value-sm">
-              <span className={`health-dot ${engineStatus.healthy ? 'ok' : 'err'}`} />
-              {engineStatus.healthy ? 'Online' : 'Offline'}
+          <a className="btn btn-primary" href="#/campaigns">Nova campanha</a>
+        </div>
+
+        <div className="split-bar" role="img" aria-label="Distribuição das decisões">
+          {split.map(x => <span key={x.key} className={x.cls} style={{ flexGrow: x.value }} />)}
+        </div>
+
+        <div className="legend">
+          {split.map(x => (
+            <div className="legend-item" key={x.key}>
+              <span className={`swatch ${x.cls}`} />
+              {x.label}
+              <span className="num">{fmt(x.value)}</span>
             </div>
+          ))}
+        </div>
+      </section>
+
+      <div className="card-grid section">
+        <div className="card">
+          <div className="card-label">Campanhas ativas</div>
+          <div className="card-value">{activeCampaigns}<span className="unit">/ {totalCampaigns}</span></div>
+        </div>
+        <div className="card">
+          <div className="card-label">Latência p95</div>
+          <div className="card-value">{s.latencyP95Ms}<span className="unit">ms</span></div>
+        </div>
+        <div className="card">
+          <div className="card-label">Motor</div>
+          <div className="card-value-sm" style={{ height: 35 }}>
+            <span className={`health-dot ${engineStatus.healthy ? 'ok' : 'err'}`} />
+            {engineStatus.healthy ? 'Online' : 'Offline'}
           </div>
-          <div className="card">
-            <div className="card-label">Orcamento</div>
-            <div className="card-value-sm">{budgetPct.toFixed(0)}%</div>
-            <div className="progress-bar" style={{ marginTop: 8 }}>
-              <div className="progress-fill" style={{ width: `${budgetPct}%` }} />
+        </div>
+        <div className="card">
+          <div className="card-label">Orçamento Jev</div>
+          <div className="card-value">{budgetPct.toFixed(0)}<span className="unit">%</span></div>
+          <div className="progress-bar" style={{ marginTop: 12 }}>
+            <div className="progress-fill" style={{ width: `${budgetPct}%` }} />
+          </div>
+        </div>
+      </div>
+
+      <div className="section">
+        <h2 className="section-title">Origem das decisões</h2>
+        <div className="list">
+          {sources.map(x => (
+            <div className="list-row" key={x.label}>
+              <div className="list-row-main">
+                <div className="list-row-title">{x.label}</div>
+                <div className="list-row-sub">{x.sub}</div>
+              </div>
+              <div className="list-row-meter progress-bar">
+                <div className="progress-fill" style={{ width: `${(x.value / sourcesTotal) * 100}%` }} />
+              </div>
+              <div className="list-row-value num" style={{ minWidth: 64 }}>{fmt(x.value)}</div>
             </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="section">
-        <h2 className="section-title">Acessos e decisoes</h2>
-        <div className="card-grid">
-          <div className="card">
-            <div className="card-label">Total de acessos</div>
-            <div className="card-value">{s.totalAccesses.toLocaleString('pt-BR')}</div>
-          </div>
-          <div className="card">
-            <div className="card-label">Pagina principal</div>
-            <div className="card-value" style={{ color: 'var(--positive)' }}>{s.routePrimary.toLocaleString('pt-BR')}</div>
-            <div className="card-sub">{((s.routePrimary / s.totalAccesses) * 100).toFixed(1)}% dos acessos</div>
-          </div>
-          <div className="card">
-            <div className="card-label">Pagina alternativa</div>
-            <div className="card-value" style={{ color: 'var(--negative)' }}>{s.routeAlternative.toLocaleString('pt-BR')}</div>
-            <div className="card-sub">{((s.routeAlternative / s.totalAccesses) * 100).toFixed(1)}% dos acessos</div>
-          </div>
-          <div className="card">
-            <div className="card-label">Latencia p95</div>
-            <div className="card-value">{s.latencyP95Ms}<span style={{ fontSize: 14, fontWeight: 400, color: 'var(--text-secondary)' }}>ms</span></div>
-          </div>
-        </div>
-      </div>
-
-      <div className="section">
-        <h2 className="section-title">Origem das decisoes</h2>
-        <div className="card-grid">
-          <div className="card">
-            <div className="card-label">Regra</div>
-            <div className="card-value-sm">{s.decisionSources.rule.toLocaleString('pt-BR')}</div>
-            <div className="card-sub">Bots verificados e limites</div>
-          </div>
-          <div className="card">
-            <div className="card-label">Cache</div>
-            <div className="card-value-sm">{s.decisionSources.cache.toLocaleString('pt-BR')}</div>
-            <div className="card-sub">Decisoes reutilizadas</div>
-          </div>
-          <div className="card">
-            <div className="card-label">Jev</div>
-            <div className="card-value-sm">{s.decisionSources.jev.toLocaleString('pt-BR')}</div>
-            <div className="card-sub">Classificacao pelo motor</div>
-          </div>
-          <div className="card">
-            <div className="card-label">Fallback</div>
-            <div className="card-value-sm">{s.decisionSources.fallback.toLocaleString('pt-BR')}</div>
-            <div className="card-sub">Motor indisponivel</div>
-          </div>
+          ))}
         </div>
       </div>
     </>

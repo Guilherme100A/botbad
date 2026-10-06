@@ -58,7 +58,7 @@ export function History() {
   }, []);
 
   if (loading) {
-    return <div className="loading"><div className="spinner" />Carregando historico...</div>;
+    return <div className="loading"><div className="spinner" />Carregando histórico...</div>;
   }
 
   const total = events.length;
@@ -74,7 +74,7 @@ export function History() {
           </svg>
         </div>
         <div className="empty-state-title">Nenhum evento registrado</div>
-        <div className="empty-state-desc">O historico de decisoes aparecera aqui.</div>
+        <div className="empty-state-desc">O histórico de decisões aparecerá aqui.</div>
       </div>
     );
   }
@@ -82,7 +82,7 @@ export function History() {
   return (
     <div className="section">
       <div className="section-header">
-        <h2 className="section-title" style={{ margin: 0 }}>Historico de eventos ({total})</h2>
+        <h2 className="section-title" style={{ margin: 0 }}>Eventos<span className="count">{total}</span></h2>
       </div>
 
       <div className="table-wrap">
@@ -91,13 +91,13 @@ export function History() {
             <tr>
               <th>Timestamp</th>
               <th>Campanha</th>
-              <th>Acao</th>
+              <th>Ação</th>
               <th>Destino</th>
               <th>Origem</th>
               <th>Motivo</th>
-              <th>Classificacao</th>
-              <th>Confianca</th>
-              <th>Duracao</th>
+              <th>Classificação</th>
+              <th>Confiança</th>
+              <th>Duração</th>
             </tr>
           </thead>
           <tbody>
@@ -108,21 +108,21 @@ export function History() {
 
               return (
                 <tr key={ev.id}>
-                  <td style={{ fontFamily: 'monospace', fontSize: 11, whiteSpace: 'nowrap' }}>
+                  <td className="num">
                     {ts.toLocaleDateString('pt-BR')} {ts.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                   </td>
-                  <td style={{ fontSize: 13 }}>{campaign?.name ?? '—'}</td>
+                  <td>{campaign?.name ?? '—'}</td>
                   <td><span className={`badge badge-${ev.action}`}>{ACTION_LABELS[ev.action]}</span></td>
-                  <td style={{ fontSize: 11, maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <td className="mono truncate">
                     {dest?.url ?? '—'}
                   </td>
-                  <td style={{ fontSize: 12 }}>{SOURCE_LABELS[ev.source]}</td>
-                  <td style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
+                  <td>{SOURCE_LABELS[ev.source]}</td>
+                  <td className="dim">
                     {REASON_LABELS[ev.reasonCode] ?? ev.reasonCode}
                   </td>
-                  <td style={{ fontSize: 12 }}>{ev.jevAssessment ?? '—'}</td>
-                  <td style={{ fontSize: 12 }}>{ev.jevConfidence != null ? `${(ev.jevConfidence * 100).toFixed(0)}%` : '—'}</td>
-                  <td style={{ fontFamily: 'monospace', fontSize: 12 }}>{ev.durationMs}ms</td>
+                  <td className="dim">{ev.jevAssessment ?? '—'}</td>
+                  <td className="num">{ev.jevConfidence != null ? `${(ev.jevConfidence * 100).toFixed(0)}%` : '—'}</td>
+                  <td className="num">{ev.durationMs}ms</td>
                 </tr>
               );
             })}
@@ -130,7 +130,7 @@ export function History() {
         </table>
       </div>
 
-      <div className="pagination">
+      <div className="págination">
         <button
           className="btn btn-secondary btn-sm"
           disabled={page === 0}
@@ -138,7 +138,7 @@ export function History() {
         >
           Anterior
         </button>
-        <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+        <span className="num">
           {page + 1} / {totalPages}
         </span>
         <button
@@ -146,7 +146,7 @@ export function History() {
           disabled={page >= totalPages - 1}
           onClick={() => setPage(p => p + 1)}
         >
-          Proxima
+          Próxima
         </button>
       </div>
     </div>
