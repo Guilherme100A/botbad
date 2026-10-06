@@ -1,7 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { useAuth } from '../context/AuthContext.js';
 import { engineStatus } from '../mock/data.js';
-import { Scramble } from './Scramble.js';
 
 const SPOT_SELECTOR = '.card, .hero, .campaign-card, .list, .info-item, .sim-card, .table-wrap';
 
@@ -175,7 +174,7 @@ export function Layout({ route, children }: LayoutProps) {
         <div className="page-header">
           <div className="page-header-left">
             <h1 className="page-title">
-              <Scramble key={route} text={PAGE_TITLES[route] ?? ''} duration={520} caret />
+              {PAGE_TITLES[route] ?? ''}
             </h1>
             <span className="page-subtitle">{PAGE_SUBTITLES[route] ?? ''}</span>
           </div>

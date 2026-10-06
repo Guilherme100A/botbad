@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { listCampaigns } from '../api/client.js';
 import { dashboardStats, engineStatus, initialCampaigns } from '../mock/data.js';
 import type { Campaign } from '@botbad/contracts';
-import { Scramble } from '../components/Scramble.js';
 import { MatrixRain } from '../components/MatrixRain.js';
 
 export function Dashboard() {
@@ -63,7 +62,7 @@ export function Dashboard() {
         <div className="hero-top">
           <div>
             <div className="hero-eyebrow">Acessos totais</div>
-            <div className="hero-value"><Scramble text={fmt(s.totalAccesses)} duration={900} /></div>
+            <div className="hero-value">{fmt(s.totalAccesses)}</div>
             <div className="hero-caption">{pct(s.routePrimary)} chegaram à página principal</div>
           </div>
           <a className="btn btn-primary" href="#/campaigns">Nova campanha</a>
@@ -87,11 +86,11 @@ export function Dashboard() {
       <div className="card-grid section">
         <div className="card">
           <div className="card-label">Campanhas ativas</div>
-          <div className="card-value"><Scramble text={String(activeCampaigns)} delay={150} /><span className="unit">/ {totalCampaigns}</span></div>
+          <div className="card-value">{activeCampaigns}<span className="unit">/ {totalCampaigns}</span></div>
         </div>
         <div className="card">
           <div className="card-label">Latência p95</div>
-          <div className="card-value"><Scramble text={String(s.latencyP95Ms)} delay={220} /><span className="unit">ms</span></div>
+          <div className="card-value">{s.latencyP95Ms}<span className="unit">ms</span></div>
         </div>
         <div className="card">
           <div className="card-label">Motor</div>
@@ -102,7 +101,7 @@ export function Dashboard() {
         </div>
         <div className="card">
           <div className="card-label">Orçamento Jev</div>
-          <div className="card-value"><Scramble text={budgetPct.toFixed(0)} delay={360} /><span className="unit">%</span></div>
+          <div className="card-value">{budgetPct.toFixed(0)}<span className="unit">%</span></div>
           <div className="progress-bar" style={{ marginTop: 12 }}>
             <div className="progress-fill" style={{ width: `${budgetPct}%` }} />
           </div>
@@ -121,7 +120,7 @@ export function Dashboard() {
               <div className="list-row-meter progress-bar">
                 <div className="progress-fill" style={{ width: `${(x.value / sourcesTotal) * 100}%` }} />
               </div>
-              <div className="list-row-value num" style={{ minWidth: 64 }}><Scramble text={fmt(x.value)} delay={300} /></div>
+              <div className="list-row-value num" style={{ minWidth: 64 }}>{fmt(x.value)}</div>
             </div>
           ))}
         </div>
