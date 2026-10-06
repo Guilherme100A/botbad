@@ -148,15 +148,21 @@ select option { background: var(--surface-2); color: var(--text); }
 
 /* Brand mark: vector HX (components/HxLogo.tsx) */
 .brand-logo {
-  width: 44px; height: 32px;
+  width: 42px; height: 28px;
   flex-shrink: 0;
   overflow: visible;
 }
+.hx-f { fill: var(--text); }
+.hx-s { fill: none; stroke: var(--text); }
+.hx-af { fill: var(--accent); }
+.hx-as { fill: none; stroke: var(--accent); }
+.hx-ink { fill: var(--accent-ink); }
+.hx-inks { fill: none; stroke: var(--accent-ink); }
 .brand-logo .hx-x { animation: hx-pulse 3.2s ease-in-out infinite; }
 @keyframes hx-pulse {
   50% { filter: drop-shadow(0 0 6px rgba(93, 255, 31, 0.75)); }
 }
-.brand-logo-lg { width: 168px; height: 120px; }
+.brand-logo-lg { width: 120px; height: 80px; }
 .sidebar-logo-text {
   font-family: var(--font-display);
   font-size: 16px;
@@ -732,7 +738,7 @@ tbody tr:hover td { background: var(--fill-1); }
   }
   .topbar .sidebar-logo-text { font-size: 15px; }
   .topbar .sidebar-logo-icon { width: 22px; height: 22px; border-radius: 6px; }
-  .topbar .brand-logo { width: 36px; height: 26px; }
+  .topbar .brand-logo { width: 36px; height: 24px; }
   .hamburger { display: flex; }
 
   .page-header { padding: 28px 16px 0; }
@@ -1043,6 +1049,51 @@ tbody tr:nth-child(n+11) td { animation-delay: 0.55s; }
 .theme-name { font-size: 13px; font-weight: 600; color: var(--text); padding: 0 2px; line-height: 1.2; }
 .theme-desc { font-size: 11px; color: var(--text-3); padding: 0 2px; line-height: 1.3; margin-top: -4px; }
 .theme-option.selected .theme-name { color: var(--text); }
+
+.theme-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  padding: 4px;
+  margin-bottom: 16px;
+  border-radius: 12px;
+  background: var(--fill-1);
+}
+.theme-tabs button {
+  padding: 7px 0;
+  border-radius: 9px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-3);
+  transition: background var(--t), color var(--t);
+}
+.theme-tabs button.active { background: var(--fill-3); color: var(--text); }
+
+.logo-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.logo-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 6px;
+  border-radius: 14px;
+  border: 1px solid transparent;
+  transition: background var(--t), border-color var(--t);
+}
+.logo-option:hover { background: var(--fill-1); }
+.logo-option.selected { border-color: rgba(var(--accent-rgb), 0.5); background: var(--fill-1); }
+.logo-stage {
+  width: 100%;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  background: var(--bg);
+  box-shadow: inset 0 0 0 1px var(--hairline);
+}
+.logo-preview { width: 66px; height: 44px; overflow: visible; }
+.logo-option .theme-name { text-align: center; font-size: 12px; }
 
 @media (max-width: 768px) {
   .theme-picker { right: 16px; bottom: 16px; }

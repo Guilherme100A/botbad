@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
-import { THEMES, useTheme } from '../context/ThemeContext.js';
+import { LOGOS, THEMES, useTheme } from '../context/ThemeContext.js';
+import { HxLogo } from './HxLogo.js';
 
-/** Floating button bottom-right that opens a grid of the available styles. */
+/** Floating button bottom-right that opens the style and logo choices. */
 export function ThemePicker() {
-  const { theme, setTheme } = useTheme();
+  const { theme, setTheme, logo, setLogo } = useTheme();
   const [open, setOpen] = useState(false);
+  const [tab, setTab] = useState<'style' | 'logo'>('style');
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -24,12 +26,34 @@ export function ThemePicker() {
   return (
     <div className="theme-picker" ref={ref}>
       {open && (
-        <div className="theme-panel" role="dialog" aria-label="Escolher estilo">
-          <div className="theme-panel-head">
-            <span className="theme-panel-title">Estilo</span>
-            <span className="theme-panel-current">{theme.name}</span>
+        <div className="theme-panel" role="dialog" aria-label="Personalizar">
+          <div className="theme-tabs" role="tablist">
+            <button type="button" role="tab" aria-selected={tab === 'style'} className={tab === 'style' ? 'active' : ''} onClick={() => setTab('style')}>Estilo</button>
+            <button type="button" role="tab" aria-selected={tab === 'logo'} className={tab === 'logo' ? 'active' : ''} onClick={() => setTab('logo')}>Logo</button>
           </div>
-          <div className="theme-grid">
+          <div className="theme-panel-head">
+            <span className="theme-panel-title">{tab === 'style' ? 'Estilo' : 'Logo'}</span>
+            <span className="theme-panel-current">{tab === 'style' ? theme.name : LOGOS.find(l => l.id === logo)?.name}</span>
+          </div>
+
+          {tab === 'logo' && (
+            <div className="logo-grid">
+              {LOGOS.map(l => (
+                <button
+                  key={l.id}
+                  type="button"
+                  className={`logo-option ${l.id === logo ? 'selected' : ''}`}
+                  onClick={() => setLogo(l.id)}
+                  aria-pressed={l.id === logo}
+                >
+                  <span className="logo-stage"><HxLogo variant={l.id} className="logo-preview" /></span>
+                  <span className="theme-name">{l.name}</span>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {tab === 'style' && <div className="theme-grid">
             {THEMES.map(t => (
               <button
                 key={t.id}
@@ -51,7 +75,7 @@ export function ThemePicker() {
                 <span className="theme-desc">{t.desc}</span>
               </button>
             ))}
-          </div>
+          </div>}
         </div>
       )}
 

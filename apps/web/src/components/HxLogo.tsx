@@ -1,15 +1,99 @@
-import { useId } from 'react';
+import { useId, type ReactNode } from 'react';
+import { useTheme, type LogoId } from '../context/ThemeContext.js';
 
 interface HxLogoProps {
   className?: string;
   title?: string;
+  /** Force a variant (picker previews); defaults to the saved choice. */
+  variant?: LogoId;
 }
 
+/** The HX mark in the variant the user picked. Minimal variants take their colors from the active style. */
+export function HxLogo({ className, title = 'HX', variant }: HxLogoProps) {
+  const { logo } = useTheme();
+  const v = variant ?? logo;
+  if (v === 'neon') return <NeonMark className={className} title={title} />;
+  return (
+    <svg className={className} viewBox="0 0 48 32" role="img" aria-label={title} xmlns="http://www.w3.org/2000/svg">
+      {MINIMAL[v]}
+    </svg>
+  );
+}
+
+/* Minimal marks on a 48×32 grid. .hx-f / .hx-s = text color, .hx-af / .hx-as = accent (index.css). */
+
+const PIXEL_H = ['10001', '10001', '10001', '11111', '10001', '10001', '10001'];
+const PIXEL_X = ['10001', '10001', '01010', '00100', '01010', '10001', '10001'];
+
+function pixels(rows: string[], x0: number, y0: number, cls: string) {
+  const out: ReactNode[] = [];
+  rows.forEach((row, r) =>
+    [...row].forEach((on, c) => {
+      if (on === '1') out.push(<rect key={`${cls}${r}-${c}`} className={cls} x={x0 + c * 3} y={y0 + r * 3} width="2.6" height="2.6" rx="0.4" />);
+    }),
+  );
+  return out;
+}
+
+const MINIMAL: Record<Exclude<LogoId, 'neon'>, ReactNode> = {
+  solid: (
+    <>
+      <path className="hx-f" d="M5 6h5v7.5h8V6h5v20h-5v-7.5h-8V26H5z" />
+      <path className="hx-as" d="M28 6l15 20M43 6L28 26" strokeWidth="5" />
+    </>
+  ),
+  line: (
+    <g strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <path className="hx-s" d="M7 7v18M21 7v18M7 16h14" />
+      <path className="hx-as" d="M28 7l14 18M42 7L28 25" />
+    </g>
+  ),
+  italic: (
+    <g transform="translate(4 0) skewX(-12)">
+      <path className="hx-f" d="M5 6h5v7.5h8V6h5v20h-5v-7.5h-8V26H5z" />
+      <path className="hx-as" d="M28 6l14 20M42 6L28 26" strokeWidth="4.5" />
+    </g>
+  ),
+  mono: (
+    <g strokeWidth="4.5" strokeLinecap="square">
+      <path className="hx-s" d="M9 7v18M9 16h21" />
+      <path className="hx-as" d="M24 7l16 18M40 7L24 25" strokeLinecap="butt" />
+    </g>
+  ),
+  tile: (
+    <>
+      <rect className="hx-af" x="10" y="2" width="28" height="28" rx="7" />
+      <path className="hx-ink" d="M14.5 10h3v4.5h4V10h3v12h-3v-4.5h-4V22h-3z" />
+      <path className="hx-inks" d="M26.5 10l7 12M33.5 10l-7 12" strokeWidth="2.8" />
+    </>
+  ),
+  pixel: (
+    <>
+      {pixels(PIXEL_H, 7.5, 5.5, 'hx-f')}
+      {pixels(PIXEL_X, 25.5, 5.5, 'hx-af')}
+    </>
+  ),
+  ring: (
+    <>
+      <circle className="hx-as" cx="24" cy="16" r="14.5" strokeWidth="1.6" />
+      <g strokeWidth="2.2" strokeLinecap="round">
+        <path className="hx-s" d="M15 10v12M21 10v12M15 16h6" />
+        <path className="hx-as" d="M26.5 10l7 12M33.5 10l-7 12" />
+      </g>
+    </>
+  ),
+  exp: (
+    <>
+      <path className="hx-f" d="M8 5h6v8.5h9V5h6v22h-6v-8h-9v8H8z" />
+      <path className="hx-as" d="M33 5l8 10M41 5l-8 10" strokeWidth="3.2" strokeLinecap="round" />
+    </>
+  ),
+};
+
 /**
- * HX mark: slanted chrome "H" with a neon rim, over a brushed neon-green "X".
- * Vector so it stays crisp at any size; transparent so it sits on any style.
+ * Neon mark: slanted chrome "H" with a neon rim, over a brushed neon-green "X".
  */
-export function HxLogo({ className, title = 'HX' }: HxLogoProps) {
+function NeonMark({ className, title = 'HX' }: { className?: string; title?: string }) {
   // Unique ids: the mark renders more than once per page (sidebar, topbar, login).
   const id = useId().replace(/:/g, '');
   const chrome = `hx-chrome-${id}`;

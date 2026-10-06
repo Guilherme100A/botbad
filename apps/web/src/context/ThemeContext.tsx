@@ -65,15 +65,45 @@ function apply(t: Theme) {
   document.querySelector('meta[name="theme-color"]')?.setAttribute('content', t.meta);
 }
 
+/** HX mark variants; drawn in components/HxLogo.tsx. */
+export const LOGOS = [
+  { id: 'solid', name: 'Sólida' },
+  { id: 'line', name: 'Linha' },
+  { id: 'italic', name: 'Itálica' },
+  { id: 'mono', name: 'Monograma' },
+  { id: 'tile', name: 'Bloco' },
+  { id: 'pixel', name: 'Pixel' },
+  { id: 'ring', name: 'Anel' },
+  { id: 'exp', name: 'Expoente' },
+  { id: 'neon', name: 'Neon' },
+] as const;
+
+export type LogoId = (typeof LOGOS)[number]['id'];
+
+const LOGO_KEY = 'jev_logo';
+const DEFAULT_LOGO: LogoId = 'solid';
+
+function loadLogo(): LogoId {
+  try {
+    const id = localStorage.getItem(LOGO_KEY);
+    return LOGOS.find(l => l.id === id)?.id ?? DEFAULT_LOGO;
+  } catch {
+    return DEFAULT_LOGO;
+  }
+}
+
 interface ThemeContextValue {
   theme: Theme;
   setTheme: (id: string) => void;
+  logo: LogoId;
+  setLogo: (id: LogoId) => void;
 }
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setThemeState] = useState<Theme>(load);
+  const [logo, setLogoState] = useState<LogoId>(loadLogo);
 
   useEffect(() => { apply(theme); }, [theme]);
 
@@ -84,7 +114,12 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     try { localStorage.setItem(KEY, id); } catch { /* noop */ }
   };
 
-  return <ThemeContext.Provider value={{ theme, setTheme }}>{children}</ThemeContext.Provider>;
+  const setLogo = (id: LogoId) => {
+    setLogoState(id);
+    try { localStorage.setItem(LOGO_KEY, id); } catch { /* noop */ }
+  };
+
+  return <ThemeContext.Provider value={{ theme, setTheme, logo, setLogo }}>{children}</ThemeContext.Provider>;
 }
 
 export function useTheme(): ThemeContextValue {
