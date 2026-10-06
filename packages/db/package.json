@@ -1,0 +1,23 @@
+{
+  "name": "@botbad/db",
+  "version": "0.0.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "generate": "drizzle-kit generate",
+    "migrate": "drizzle-kit migrate",
+    "push": "drizzle-kit push"
+  },
+  "dependencies": {
+    "@botbad/contracts": "workspace:*",
+    "drizzle-orm": "*",
+    "pg": "*"
+  },
+  "devDependencies": {
+    "@types/pg": "*",
+    "drizzle-kit": "*",
+    "typescript": "*"
+  }
+}

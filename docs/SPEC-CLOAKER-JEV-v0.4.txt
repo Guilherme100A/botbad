@@ -1,0 +1,308 @@
+Cloaker JEV — spec de proteção da página e roteamento de clientes/bots
+
+Versão 0.4 • 06/10/2026 • Status: SPEC REVISADA; IMPLEMENTAÇÃO E HANDOFF NÃO INICIADOS.
+
+Esta nota é a proposta a ser entregue ao agente `orquestrador`. A revisão desta spec foi solicitada pelo usuário. Nenhum envio, implementação ou contratação foi realizado nesta etapa; a autorização para revisar o documento não implica iniciar essas ações.
+
+Revisão 0.4: proteção da página principal contra acesso automatizado como função central; destino principal e alternativo obrigatórios; bots verificados e automação provável encaminhados à alternativa; incerteza e falhas com comportamento explícito. Preservados o perfil geral por padrão, a origem opcional e as evidências IP/ASN com proveniência.
+
+## 1. Objetivo e premissas
+
+Construir um cloaker/roteador com painel de campanhas, cujo objetivo principal é controlar a exposição da página principal: visitantes classificados como clientes prováveis recebem o destino principal; bots identificados e automação provável recebem um destino alternativo configurado. Jev é o motor de classificação dos casos elegíveis sem identidade conclusiva. Priorizar qualidade da decisão, baixa fricção para clientes, rapidez e disponibilidade; custo permanece como limite operacional explícito. A classificação não comprova intenção de compra nem identifica todos os bots.
+
+Referência funcional fornecida pelo usuário e lida integralmente: `C:\Users\green\Downloads\SPEC-JEV-ECONOMICA.md` (JEV Traffic Guard, v1.0). Esta revisão aproveita sua estrutura de produto, perfil geral e contexto opcional por rede, desafio, operação e avaliação, ajustando a prioridade conforme a correção do usuário: a decisão precisa ser eficiente, não necessariamente a mais barata. Preservar o arquivo de referência; este documento é a versão consolidada para o orquestrador. Repositórios e benchmarks citados na referência não foram auditados nesta revisão e não são dependências aprovadas.
+
+Ordem de decisão do projeto: cumprir critérios de proteção e falso positivo → cumprir latência e disponibilidade → entre alternativas equivalentes, reduzir custo e complexidade. Não aumentar TTL, remover evidências, restringir chamadas ou reduzir contexto apenas para economizar se isso piorar decisões. Não existe meta de mandar só 10% do tráfego à IA.
+
+Premissa funcional: proteger a página principal de acessos automatizados por roteamento explícito, incluindo bots reconhecidos associados a TikTok, Meta/Facebook/Instagram, Google e demais serviços quando houver evidência verificável. A regra usa identidade de bot ou evidência de automação, independentemente da rede escolhida na campanha; não presume que IP empresarial identifique revisor. Revisores humanos e bots que se comportem como navegadores comuns podem não ser distinguidos. O produto não promete invisibilidade total nem aprovação de anúncios.
+
+Premissa de fornecedor: Jev da TypeSafe AI, identificado pela descrição do usuário. Confirmar a conta/provedor disponível antes da integração real. O workspace local estava vazio na inspeção; a arquitetura abaixo é proposta, não descrição de código existente.
+
+## 2. Referência visual inspecionada
+
+Portal conectado: `cloaker`. Página observada: https://www.cloakfy.com.br/dashboard. Inspeção visual e de estilos feita em sessão autenticada, sem alterar dados.
+
+- Fundo observado #0A0A0A; fonte Inter com fallback system-ui.
+- Navegação ativa em verde #71FF91 e fundo verde translúcido; raio observado de 9px nos itens.
+- Sidebar de aproximadamente 275px no viewport observado de 1100px; barra superior de aproximadamente 68px.
+- Cartões escuros com bordas discretas, ícones lineares, CTA verde, indicador de sistema e onboarding em três etapas.
+- Reutilizar linguagem visual e organização; criar identidade, textos e ícones próprios. Não reproduzir dados da conta conectada.
+
+Telas do MVP: Visão geral, Campanhas, Tráfego recente, Histórico, Motor JEV e Configurações. Usar domínio compartilhado inicialmente; Domínios próprios entra em etapa posterior. Menu lateral recolhível no celular; alvos de toque confortáveis, foco visível, contraste verificável e estados de carregamento, vazio e erro.
+
+Dashboard: acessos, destino principal/alternativo/desafio/negação, origem das decisões, origem declarada da campanha separada da identidade de rede/bot observada, incerteza/fallback, desafios concluídos, latência p95 e saúde do motor; consumo em posição secundária. Bots não detectados, humanos encaminhados indevidamente e abuso não detectado aparecem somente quando houver rótulos verificados, com amostra e período. CTA principal “Criar campanha”; onboarding “Configurar páginas → Simular → Ativar”. Tela do motor: modelo, versões de política/perfil, modo shadow/ativo, orçamento, timeout e saúde da integração. Estado demonstrativo precisa ser identificado como tal.
+
+### 2.1. Escopo funcional e perfis
+
+MVP: login e organizações; owner/operator/viewer; criar, simular, ativar e pausar campanhas; destinos principal e alternativo HTTPS autorizados; regras obrigatórias, verificação de bots, Jev, roteamento por classificação, cache de decisões equivalentes, desafio e fallback; histórico, métricas e auditoria. A simulação usa fixtures identificadas, sem apresentar resultado mock como resultado real do Jev.
+
+O perfil geral é o padrão e permite criar, simular e ativar uma campanha sem selecionar TikTok ou outra plataforma. Na interface, mostrar “Origem da campanha (opcional)” dentro das opções avançadas, com Geral/não informada, TikTok, Meta (Instagram/Facebook), Google, X, orgânico e customizado. Não exigir botões de rede como etapa obrigatória.
+
+Internamente, `networkProfile` é opcional na entrada da API e normalizado para `general` quando omitido. Valores: `general | tiktok | meta | google | x | organic | custom`. Campanhas existentes mantêm sua seleção; campanhas antigas sem esse campo recebem `general`. O backend escolhe e versiona a política efetiva: geral por padrão, variação por rede somente após avaliação.
+
+A origem informada serve como contexto e para relatórios; não é prova de onde o visitante veio nem de quem o opera. UTMs, referrer, User-Agent e IDs de clique são pistas observadas separadamente da origem declarada. Ausência de cookie, VPN, país ou ASN isolado não determina bloqueio. Bots verificados, inclusive crawlers legítimos e serviços de prévia, recebem a página alternativa pela política padrão de proteção. Isso é restrição de exposição do conteúdo, não classificação automática desses bots como abusivos. Clientes prováveis recebem a página principal; limites volumétricos continuam valendo para ambos.
+
+A coleta e a verificação de IP/ASN funcionam em todos os perfis, inclusive `general`: não limitar consultas de identidade a TikTok porque o dono escolheu TikTok. Um acesso de rede conhecida ou um bot verificado pode aparecer em qualquer campanha.
+
+O Jev não descobre IPs, consulta bases ou identifica automaticamente todas as redes. Ele interpreta somente as evidências normalizadas que o backend coleta e envia. O perfil opcional pode contextualizar navegador interno, mobile, prévias e atribuição; diferenças de thresholds exigem validação, e a ausência de plataforma não reduz os controles gerais.
+
+Deixar para depois: geração/edição de mídia, proxy completo da landing, automação de anúncios, cobrança automatizada e provisionamento de domínio próprio. Planos e preços comerciais da referência são hipóteses e não integram a decisão técnica do motor. Se assinaturas forem necessárias no piloto, ativação administrativa com início, vencimento e auditoria; nunca prometer precisão maior em plano mais caro sem evidência.
+
+### 2.2. Duas páginas e criação da campanha
+
+Campos obrigatórios: nome, página principal (`primaryDestinationId`) e página alternativa (`alternativeDestinationId`). “Origem da campanha” continua opcional nas opções avançadas. A interface explica: “Clientes prováveis recebem a página principal. Bots identificados e automação provável recebem a página alternativa.”
+
+Destinos devem ser HTTPS, autorizados, distintos e sem loop para o link da campanha. Página alternativa é fixa por campanha no MVP, deve funcionar por conta própria e não redirecionar nem carregar recursos protegidos da principal. Não escolher site aleatório nem buscar um destino na resposta do Jev.
+
+Exibir prévias e simular quatro casos: cliente provável, bot verificado, automação provável e evidência insuficiente. Mostrar o destino e o motivo esperados, identificando fixtures. Uma campanha sem alternativa válida permanece em rascunho. Campanhas antigas sem esse campo não são convertidas silenciosamente: ficam pausadas até configurar ambos os destinos.
+
+Shadow registra a decisão proposta, sem alegar proteção ativa. No piloto sem política anterior validada, usar uma página de teste neutra. Em campanhas existentes, conservar a política previamente ativa durante shadow; nenhum toggle deve liberar todos os acessos à principal sob o rótulo “protegido”. Ativação do roteamento ocorre só após avaliação e canário.
+
+## 3. Arquitetura mínima
+
+Proposta inicial seguindo a referência: monorepo TypeScript; painel React + Vite; API/roteador Hono em Node.js LTS suportado; Zod, Drizzle e PostgreSQL; Caddy para HTTPS e Docker Compose. Resolver versões suportadas e lockfile durante a implementação. Um repositório e uma implantação inicial, com job de eventos; processos separados conforme carga. Não adicionar Kubernetes, broker dedicado ou banco vetorial ao MVP.
+
+Link público em `/r/:campaignSlug`, com redirecionamento 302 para o destino principal ou alternativo escolhido exclusivamente pelo backend. Não buscar nem renderizar a landing no roteador. Dimensionar servidor pela carga com Jev efetivamente habilitado, sem assumir capacidade de uma VPS apenas por vCPU/RAM.
+
+Limite do MVP: o modo redirect controla os acessos que passam pelo link protegido; a URL principal aparece ao cliente e acesso direto a ela pode contornar o roteador. Não chamar esse modo de proxy reverso nem prometer esconder a origem. Para proteger também acesso direto, é necessário um modo proxy com origem restrita ao gateway, sem endpoint público de bypass, e revisão de cookies/assets/checkout. Essa etapa precisa de contrato e testes próprios antes de alegar proteção da origem. Mesmo um proxy não impede cópia por um visitante autorizado.
+
+Cache em memória com tamanho limitado na primeira instância; orçamento e limites globais em armazenamento com operações atômicas. Ao escalar horizontalmente, adotar cache/limitador compartilhado. Usar fila/outbox no banco para eventos duráveis. A hospedagem será escolhida depois de medir tráfego, região e necessidade de domínios customizados.
+
+Fluxo de decisão:
+
+`requisição → controles obrigatórios → evidências atuais + IP/ASN local → perfil geral/contexto opcional → decisão equivalente válida ou Jev → política final → principal/alternativa/desafio/negação → evento assíncrono`
+
+O runtime não é um conjunto de agentes conversando por visita. É um pipeline determinístico com, no máximo, uma consulta ao Jev por decisão síncrona. O orquestrador de desenvolvimento coordena a construção; não participa do tráfego de produção.
+
+## 4. Pipeline orientado à qualidade
+
+1. Resolver tenant e campanha; rejeitar configuração inválida. Verificar domínio, status da campanha, destino autorizado e limites de acesso.
+2. Aplicar regras obrigatórias e sinais atuais de abuso antes de qualquer cache. Limites volumétricos nunca dependem de IA. Identidade de bot conclusiva e vigente seleciona a alternativa sem chamar Jev; assinatura empresarial/ASN isolado não é identidade conclusiva.
+3. Coletar evidências, incluindo IP/ASN e verificação disponível de identidade; resolver perfil geral ou contexto opcional da campanha. Consultar cache somente quando a equivalência do contexto estiver validada. Chave: tenant + campanha + versões de política/perfil/modelo/esquema + hash dos sinais relevantes + sessão pseudonimizada. Sem sessão confiável, não reutilizar liberação entre visitantes.
+4. Consultar Jev em toda nova decisão elegível que não tenha sido resolvida por controle obrigatório, identidade conclusiva de bot ou resultado equivalente ainda válido. Elegível significa resolução de link ativo com configuração válida, fora de limites de abuso já atingidos. Não usar score local baixo como dispensa automática de IA. Reservar orçamento antes da chamada; indisponibilidade de capacidade/orçamento é modo degradado explícito. Assets e polling do painel não são novas decisões de tráfego.
+5. Validar a resposta e aplicar limites de confiança. O código controla a ação final; o modelo não recebe autorização para navegar, executar código ou inventar destinos.
+6. Registrar origem da decisão, razão operacional, versão, duração, tokens e custo; publicar eventos sem bloquear a navegação quando possível.
+
+Começar a avaliação com cache de decisão desabilitado, mantendo apenas deduplicação da mesma decisão concorrente. Comparar TTLs de 0, 5, 15 e 30 segundos em replay temporal separado; ativar cache somente sem regressão relevante de proteção ou fricção. Novo sinal material, desafio, mudança de política/perfil/modelo ou deterioração comportamental invalida a decisão. Nunca reutilizar decisão entre tenants; não cachear timeout ou baixa evidência como liberação duradoura. Reavaliar sinais dinâmicos e limites em toda requisição. Limitar memória e deduplicar chamadas simultâneas à mesma chave.
+
+Entrada compacta: política resumida, perfil efetivo geral/contexto opcional, integridade da requisição, contadores agregados de frequência, resultado de verificação de sessão, evidências normalizadas de IP/ASN/identidade e sinais de abuso coletados pelo servidor. Não confiar em headers forjáveis como única evidência. Não enviar cookies, credenciais, IP bruto ou URL com dados pessoais ao modelo. Dados ausentes devem aparecer como ausentes, sem inventar certeza.
+
+Cada evidência inclui origem, janela de medição, idade e disponibilidade. Separar fatos observados de inferências e sinais fornecidos pelo cliente. Ausência reduz cobertura, sem elevar risco automaticamente. No primeiro redirecionamento não existem dados de mouse, permanência ou comportamento na landing; não inventá-los. Não inserir um score local agregado no prompt inicial, para evitar que substitua a leitura das evidências. Se útil futuramente, comparar com/sem score em avaliação controlada.
+
+### 4.1. Evidências IP/ASN e identidade de bots
+
+Objetivo: fornecer contexto confiável sobre a rede de origem e, quando possível, comprovar a identidade de um bot. Separar três perguntas: a campanha foi configurada como TikTok? O IP pertence a uma rede associada à empresa? A requisição corresponde a um bot específico verificado? Uma resposta não comprova as outras.
+
+O IP de um cliente que clica em anúncio normalmente é o da conexão do próprio visitante, não o da rede social. IP associado à Meta, ByteDance ou outra organização é uma evidência de rede, não prova de revisão, abuso ou bot. Bots podem usar terceiros; IP desconhecido também não prova que o visitante é humano.
+
+Coleta no backend:
+- Obter o IP do peer ou do proxy de confiança configurado. Só aceitar headers de encaminhamento quando a requisição vier desse proxy; não permitir que o visitante escolha seu IP com um header.
+- Normalizar IPv4/IPv6, IPv4 mapeado e representação canônica; não executar classificação pública de rede sobre endereços privados ou reservados.
+- Consultar uma base local versionada de prefixos/ASN com licença adequada. Registrar ASN, organização informada pela fonte e data; associação entre ASN e marca exige fonte explícita, não busca por substring ou inferência do Jev.
+- Manter cadastro de bots/prefixos oficiais quando existirem e suas regras de verificação. Não inventar uma lista oficial do TikTok/Meta nem tratar todos os IPs de uma empresa como exclusivos de um crawler.
+- Verificar a combinação exigida pela fonte: faixa exclusiva publicada, identificação do agente e, quando aplicável, DNS reverso seguido de resolução direta que inclua o IP original; validar sufixo por fronteira de domínio. Somente PTR ou User-Agent isolado não confirma identidade.
+- Se houver identidade assinada, validar assinatura por método suportado antes de atribuir status verificado. Requisição incompatível com uma identidade alegada não pode ser considerada bot verificado, mas isso por si só não implica abuso.
+
+Classificar o resultado do enriquecimento como `verified_bot`, `network_association`, `unknown` ou `unavailable`. `network_association` não permite promover automaticamente a `verified_bot`. Esses estados são separados da classificação `likely_human/likely_automation/insufficient_evidence` do Jev. `verified_bot` vigente é evidência conclusiva para o roteamento à alternativa por política; `network_association`, `unknown` e `unavailable` não definem sozinhos o destino.
+
+Proveniência obrigatória: `sourceId`, `sourceVersion`, `fetchedAt`, `expiresAt`, método de verificação e, para identidade confirmada, bot identificado e instante da verificação. Marcar dados expirados como `stale`. Não representar confiança numérica inventada como se viesse da fonte. Conhecimento paramétrico do Jev sobre uma empresa não substitui a verificação técnica.
+
+Atualização e latência:
+- Fazer sincronização em job, fora da navegação, usando fontes HTTPS autorizadas e versões validadas. Trocar o snapshot local atomicamente e conservar a última cópia válida com sua data.
+- Proposta inicial: verificar atualizações de listas de bots a cada 6 horas; validade máxima de 24 horas. Para a base ASN, checar a cada 24 horas; validade máxima de 7 dias. Ajustar aos termos, ao ritmo publicado e às revogações de cada fonte; usar o prazo mais curto quando ela exigir. São parâmetros operacionais, não garantia de atualização do fornecedor.
+- Consulta local por prefixo é a via padrão. Verificação DNS usa cache limitado, respeita TTL e expiração da fonte, tem timeout e concorrência próprios e cabe no deadline total. Sem tempo/capacidade, retornar desconhecido/indisponível ou usar verificação futura, sem inventar identidade para o acesso atual.
+- Uma fonte fora do ar preserva contexto histórico marcado como expirado; dados expirados não produzem identidade atualmente verificada. Cache de decisão inclui versão e validade da evidência utilizada e não pode durar além dela. Revogação invalida a evidência e decisões afetadas.
+- Não fazer uma API externa paga por clique como requisito do MVP. Integração externa adicional exige justificativa de qualidade, orçamento e falha definidos. Falha do enriquecimento não bloqueia automaticamente um cliente.
+
+Enviar ao Jev somente ASN/organização normalizados, categoria de rede suportada pela fonte, estado de verificação, identidade verificada quando houver, proveniência mínima, idade/validade e disponibilidade. Conservar IP bruto somente pelo tempo necessário à coleta e verificação; não enviá-lo ao modelo nem registrá-lo em logs. Identificador pseudonimizado de frequência continua sujeito à retenção e controle de acesso.
+
+O motor geral combina essas evidências com sessão, integridade e comportamento. Nenhuma política nega acesso apenas por ASN empresarial, VPN/datacenter ou origem declarada. Não é possível garantir identificação de todos os bots ou de revisores humanos.
+
+Referências de método, não listas específicas de TikTok/Meta:
+- https://developers.cloudflare.com/bots/reference/bot-verification/ip-validation/
+- https://developers.cloudflare.com/bots/reference/bot-management-variables/
+
+## 5. Contrato do motor
+
+Segundo a referência oficial consultada, a API direta usa `POST https://api.typesafe.ai/v1/systemone`, autenticação Bearer, campos `model`, `state` e `questions`. A pergunta `choice` usa `instructions` e um mapa `criteria`; a resposta contém escolha, probabilidades e confiança. Referência: https://docs.typesafe.ai/api.
+
+Fixar inicialmente `jev-1.13.0`, sujeito à disponibilidade da conta, e registrar a versão efetivamente retornada. A documentação lista US$ 0,042 por milhão de tokens de entrada e saída gratuita, em 06/10/2026. Revalidar preço e limites na integração. Referência: https://docs.typesafe.ai/models.
+
+Contrato interno proposto, independente de SDK:
+
+```ts
+type NetworkProfile = 'general' | 'tiktok' | 'meta' | 'google' | 'x' | 'organic' | 'custom';
+type NetworkEvidence = {
+  status: 'verified_bot' | 'network_association' | 'unknown' | 'unavailable';
+  asn: number | null;
+  organization: string | null;
+  botIdentity: string | null; // preenchido só com verificação válida
+  stale: boolean;
+  sourceId: string | null;
+  sourceVersion: string | null;
+  fetchedAt: string | null;
+  expiresAt: string | null;
+  verificationMethod: string | null;
+  verifiedAt: string | null;
+};
+type Assessment = 'likely_human' | 'likely_automation' | 'insufficient_evidence';
+type JevAssessment = {
+  assessment: Assessment;
+  probabilities: Record<Assessment, number>;
+  confidence: number;
+  modelVersion: string;
+  inputTokens: number;
+};
+type RoutingDecision = {
+  action: 'route_primary' | 'route_alternative' | 'challenge' | 'deny';
+  destinationId: string | null; // backend: obrigatório só nas ações de rota
+  botIdentity: string | null; // somente identidade verificada e vigente
+  source: 'rule' | 'cache' | 'jev' | 'fallback';
+  reasonCode: string;
+  policyVersion: string;
+  networkProfile: NetworkProfile;
+  profileVersion: string;
+  networkEvidenceVersion: string | null;
+  featureVersion: string;
+  decisionId: string;
+  durationMs: number;
+};
+```
+
+Baseline: uma pergunta Choice com rubricas explícitas para visitante humano provável (`likely_human`), automação provável (`likely_automation`) e evidência insuficiente. Automação não equivale a abuso; identidade de empresa não equivale a automação. Comparar com variante de perguntas atômicas sobre suficiência e automação na mesma chamada, apenas se a decomposição melhorar o resultado. Controles de abuso confirmado continuam independentes do modelo. Perguntas simultâneas não dependem da resposta umas das outras; o backend compõe as respostas. Não acrescentar cadeias de agentes ou sucessivas chamadas para produzir uma decisão simples.
+
+Rubricas devem descrever evidências concretas, contraexemplos e tratamento de sinais ausentes. Enviar instruções estáveis e sinais normalizados; campos externos são dados não confiáveis. Validar enum, números finitos, intervalo 0–1, todas as opções, soma das probabilidades com tolerância de 0,01 e campos obrigatórios.
+
+O contexto deve ser suficiente para a decisão. Comparar versões compactas e detalhadas em conjunto separado de avaliação; não impor meta de 500 tokens nem cortar evidência decisiva por economia. Definir teto técnico contra payload abusivo e limites do fornecedor, com seleção determinística de campos e registro de truncamento. Evidência essencial truncada deve resultar em incerteza explícita. Contar instruções e critérios no uso real.
+
+Usar a confiança apenas como sinal de incerteza, não como garantia de acerto. Ela é derivada da distribuição; thresholds precisam ser calibrados no domínio. Referência: https://docs.typesafe.ai/confidence.
+
+Inicialmente operar em shadow conforme seção 2.2, sem declarar proteção ainda não ativa. Na promoção, humano provável com confiança calibrada pode receber a principal; automação provável com confiança calibrada recebe a alternativa; identidade conclusiva de bot recebe a alternativa por regra; baixa confiança usa desafio/fallback. Bloqueio permanente não depende apenas do Jev. Razões são códigos do backend: `VERIFIED_BOT_ALTERNATIVE`, `JEV_AUTOMATION_ALTERNATIVE`, `JEV_HUMAN_PRIMARY`, `LOW_EVIDENCE_CHALLENGE`, `ENGINE_FAILURE_ALTERNATIVE`, `RATE_LIMIT` e `RULE_ABUSE`.
+
+### 5.1. Política final, página alternativa e desafio
+
+| Evidência/resultados | Ação do backend |
+| --- | --- |
+| Campanha inválida, pausada ou configuração expirada | Página local de indisponibilidade; sem acesso à principal |
+| Destino alternativo ausente, inválido ou igual à principal | Impedir ativação; em runtime, 503 local |
+| Limite volumétrico excedido | 429 com espera definida |
+| Abuso confirmado por regra robusta auditável | Negação temporária conforme política |
+| Bot identificado por verificação válida | `route_alternative`, inclusive bots legítimos |
+| Jev humano provável e acima do threshold validado, sem contradição forte | `route_primary` |
+| Jev automação provável e acima do threshold validado | `route_alternative` |
+| Baixa confiança, respostas contraditórias ou evidência insuficiente | `challenge`; sem desafio disponível, alternativa com motivo de incerteza |
+| Desafio aprovado, sem identidade conclusiva de bot e controles atuais satisfeitos | `route_primary`, com comprovação de sessão temporária |
+| Desafio recusado/expirado ou tentativas limitadas | Alternativa; abuso volumétrico continua podendo resultar em 429/deny |
+| Jev indisponível, orçamento/capacidade esgotados ou resposta inválida | Alternativa com motivo de falha; não classificar o acesso como bot por isso |
+
+Ordem: validade/configuração → controles rígidos de abuso → identidade conclusiva de bot → evidência Jev/sessão válida → desafio/fallback. Aprovação de desafio nunca substitui regra rígida nem identidade conclusiva de bot.
+
+Thresholds são versionados por perfil/ação após calibração; separar o threshold necessário para liberar a principal do necessário para encaminhar automação provável. Nenhum score de confiança isolado garante acerto. Em incerteza, não rotular um cliente como bot: registrar a dúvida e o motivo operacional do destino alternativo.
+
+O fallback padrão é restritivo quanto à exposição da principal: não trocar silenciosamente para liberação geral quando Jev, DNS, orçamento ou desafios falharem. Fonte IP/ASN desconhecida sozinha não impede uma decisão Jev válida com evidências suficientes; sem condições para decidir, seguir desafio/alternativa. Esse fallback pode encaminhar clientes à alternativa durante falhas; medir esses acessos como degradação e alertar o dono.
+
+Usar um provedor de desafio com validação no backend. Testar acessibilidade e navegadores internos dos perfis. Validar token, domínio, expiração, replay e tentativas; emitir comprovação de sessão assinada Secure/HttpOnly, inicialmente até 10 minutos, ligada a tenant, campanha e política. A comprovação permite dispensar repetição do desafio dentro da validade, sem pular controles atuais nem invalidar identidade conclusiva. Aprovação de desafio não é rótulo perfeito de humanidade.
+
+Redirecionar exclusivamente para o destino autorizado selecionado pelo backend. Ambos os caminhos usam `Cache-Control: private, no-store` e bypass de cache da CDN. Encaminhar somente parâmetros de atribuição permitidos; impedir destino livre e loops. Na alternativa, não expor URL, identificadores de destino ou recursos da principal, nem instruções para contornar o filtro. Motivos detalhados e sinais ficam no painel autenticado.
+
+O cache guarda ação, destino, versão e validade; mudanças de qualquer destino invalidam imediatamente a decisão. Não reusar uma decisão principal em resposta alternativa ou vice-versa. A resposta do Jev nunca contém uma URL autorizada a ser usada diretamente.
+
+## 6. Latência, falhas e orçamento
+
+- Metas de projeto, ainda não medidas: p95 abaixo de 50ms para regras/cache no servidor e abaixo de 800ms no caminho com Jev, excluindo carregamento do destino.
+- Timeout inicial da chamada: 600ms, incluindo conexão e leitura. Ajustar após teste regional; sem retry síncrono automático. Inspecionar defaults do SDK para impedir retries ocultos.
+- Medir separadamente latência de decisões Jev concluídas e latência de fallback. Responder rápido por timeout não comprova eficiência. Se muitos acessos caírem no fallback, ajustar região/capacidade/deadline e reavaliar a experiência; não aprovar apenas porque o p95 total passou.
+- Timeout, 429, indisponibilidade, resposta inválida ou orçamento esgotado: fallback configurado por campanha e registro do motivo. Nunca retornar erro bruto do provedor ao visitante.
+- Circuit breaker inicial: abrir por 30s após cinco falhas consecutivas; meia abertura com uma chamada de teste. Ajustar em testes, evitando tempestade de probes.
+- Para campanhas protegidas, falha do motor leva à alternativa; incerteza leva a desafio e depois à alternativa se não houver resolução. Nenhuma falha libera silenciosamente a principal. Regras rígidas de segurança continuam valendo. Configuração inválida resulta em página local de indisponibilidade.
+- Limites por tenant e globais, por dia e mês; alertas em 80% e 95%, interrupção de novas chamadas em 100%. Reserva conservadora antes de chamar e reconciliação com uso real; chamadas cujo faturamento for incerto permanecem contabilizadas até reconciliação.
+- Proteger também o custo de requests, desafios e logs: limitar abuso antes da IA, limitar concorrência e amostrar detalhe de acessos normais. Auditoria de mudanças e erros de integração não é amostrada.
+
+Dimensionar capacidade para Jev em até 100% das decisões elegíveis sem cache. Limites globais de requests, tokens e concorrência incluem shadow e jobs, respeitando a conta real; compartilhar limitadores antes de escalar instâncias. Sem capacidade, fallback imediato com métrica e alerta, sem fila longa. Um teto financeiro que cause degradação frequente exige revisão operacional; não reduzir a qualidade silenciosamente para caber nele.
+
+Falha de banco impede novas reservas Jev e ativações. Configuração válida em memória pode atender por janela máxima proposta de 60s com regras/alternativa, sem novas liberações à principal; ausente ou expirada resulta em 503. Circuito de telemetria tem buffer limitado, contador de perda e descarte de detalhe normal antes de auditoria durável. Backup externo diário, retenção inicial de 7 dias e restauração testada antes do piloto.
+
+Sem fallback automático para modelo caro. Novos modelos e novos provedores exigem comparação de qualidade, custo e disponibilidade.
+
+## 7. Custo como dimensionamento, não meta de decisão
+
+Definições: V = acessos/mês; r = fração resolvida por regras; h = cache hit entre os restantes; q = (1-r) × (1-h); T = média total de tokens faturados por chamada, incluindo instruções; P = preço por milhão de tokens.
+
+`Custo IA = V × q × T / 1.000.000 × P`
+
+Cenário ilustrativo: V = 1.000.000, T = 500 e P = US$ 0,042. Não é benchmark nem cotação contratual.
+
+| Fração enviada ao Jev | Chamadas/mês | Custo de IA estimado |
+| --- | ---: | ---: |
+| 100% | 1.000.000 | US$ 21,00 |
+| 10% | 100.000 | US$ 2,10 |
+| 2% | 20.000 | US$ 0,42 |
+
+As frações são cenários financeiros, não metas de uso. Planejar capacidade para q próximo de 100% no conjunto elegível. Não criar regras fracas para alcançar q = 10% ou 2%. Os 500 tokens são apenas exemplo aritmético; o payload será definido pela qualidade medida. Para 1 milhão de chamadas, 1.500 tokens médios resultariam em US$ 63,00 e 3.000 tokens em US$ 126,00, sob o mesmo preço e sem outros custos.
+
+Total = IA + aplicação + banco + transferência + domínios + desafios + observabilidade + eventuais taxas do gateway/impostos. Não assumir gratuidade de infraestrutura. O painel deve separar custo estimado de uso faturado, exibir moeda e data do preço, e contar chamadas de shadow, avaliação e falhas potencialmente faturadas.
+
+## 8. Dados e APIs do produto
+
+Entidades: tenants, memberships, campaigns, destinations, domains, policy_versions, decision_events, daily_metrics, budget_reservations, network_sources, network_snapshot_versions e audit_log. Toda entidade de negócio possui tenant_id; autorização e consultas testam isolamento. Configurações e ambos os destinos são versionados; ativação é atômica. Rollback restaura somente política válida com proteção previamente aprovada; se não houver uma, usar alternativa/indisponibilidade até correção, nunca liberar tudo à principal.
+
+Em campaigns, persistir `primaryDestinationId`, `alternativeDestinationId`, política de bots e fallback. Os dois destinos exigem isolamento por tenant e autorização. `networkProfile` tem default `general`; entrada sem origem é válida. Perfis existentes são preservados em migração. Separar origem declarada das evidências observadas nos eventos e filtros do painel. Fontes IP/ASN são metadados operacionais globais, sem dados pessoais de tenants; políticas e dados de sessão continuam isolados. Apenas operador autorizado da infraestrutura altera fontes/snapshots, com auditoria.
+
+Endpoints propostos: CRUD de campanhas; simulação sem efeito externo; ativar/pausar política; resolver link público; consultar eventos paginados; métricas agregadas; status/custos do motor. Login e papéis owner/operator/viewer no painel. Segredo do Jev somente no backend.
+
+URLs dos dois destinos precisam de esquema permitido, domínio verificado, prevenção de loops e bloqueio de open redirect. Destino principal e alternativo não podem coincidir. Incluir validação e simulação do roteamento no fluxo de ativação. Se houver verificação remota de destino, impedir SSRF e acesso a redes privadas. Domínios customizados exigem comprovação de controle e provisionamento TLS; sem esses elementos, ficar em rascunho.
+
+Retenção proposta: eventos detalhados minimizados por 7 dias; agregados por 90 dias, configuráveis. Paginação por cursor e índice tenant/campanha/data. Tráfego ao vivo via atualização incremental com frequência limitada; pausar quando aba estiver oculta. Não expor dados de outros tenants em streams.
+
+## 9. Orquestração de desenvolvimento
+
+Execução somente depois da afirmação do usuário. O agente `orquestrador` será responsável por integração, critérios de aceite e comunicação. Delegação deve ser finita, com um dono por conjunto de arquivos e entregáveis pequenos.
+
+| Etapa | Entrega | Dependência / encerramento |
+| --- | --- | --- |
+| 0. Contratos | ADR, dois destinos, políticas de bots/fallback, fontes disponíveis, rubricas, perfis, protocolo de avaliação e adapter mock | Validar acesso ao fornecedor e critérios de qualidade, sem inventar resultados |
+| 1A. Interface | Painel e fluxo criar/simular/ativar com mock | Após contratos; pode ocorrer em paralelo com 1B |
+| 1B. Motor | Roteamento principal/alternativa, identidade de bots, Jev por decisão elegível, controles, fallback e eventos; cache condicionado à avaliação | Após contratos; dono único do runtime |
+| 2. Integração | Persistência, autorização, painel consumindo API e domínio de teste | 1A + 1B concluídas |
+| 3. Verificação | Comparação de qualidade, falhas, carga com Jev até 100%, custo e revisão visual | Integração funcional |
+| 4. Entrega | Instruções de operação, limitações, rollback e demonstração | Aceites cumpridos; publicação conforme autorização disponível |
+
+Eficiência da equipe: inicialmente dois executores em paralelo quando houver trabalho independente; nenhum agente por arquivo ou por visita. Cada tarefa recebe contrato, contexto suficiente, arquivos pertinentes e critérios de aceite. Resultado deve conter arquivos alterados, evidência de validação e pendências. Revisão do orquestrador concentrada em contratos, qualidade de decisão, segurança de dados e comportamento; repetir testes quando mudanças/falhas justificarem. Economia de orquestração não autoriza remover revisão ou evidência necessária.
+
+Jev será o motor de classificação do produto. Não presumir que ele gera código, telas, textos ou planos. Evitar geradores de conteúdo e módulos de mídia no MVP.
+
+## 10. Critérios de aceite e promoção
+
+- Criar campanha com ambos os destinos verificados, simular, ativar, pausar e reverter política com trilha de auditoria.
+- Caso obrigatório: bot verificado → alternativa, inclusive bot legítimo de serviço conhecido; nenhuma resolução expõe o destino principal no response ou assets da alternativa.
+- Caso obrigatório: Jev automação provável com threshold validado → alternativa; humano provável com evidência suficiente → principal; inconclusivo → desafio/fallback.
+- Caso obrigatório: timeout, 401/429/529, orçamento/capacidade esgotados, desafio indisponível ou falha do banco → comportamento restritivo definido, sem liberação silenciosa à principal. Medir falsos encaminhamentos por falha separadamente.
+- Impedir ativação sem alternativa válida, com destinos iguais ou com loops; testar alteração de destinos, invalidação de cache, sessão de desafio e isolamento de tenant.
+- Na etapa 0, nomear fonte/provedor efetivamente disponível para ASN e cada identidade de bot suportada; incluir provenance e fixtures. Sem fonte verificável de TikTok/Meta, manter identidade desconhecida e declarar essa cobertura, sem simular suporte concluído.
+- Criar e ativar campanha sem selecionar plataforma; API e UI normalizam para `general`. Origem opcional aparece nas opções avançadas. Migração preserva origem já definida e preenche geral quando ausente.
+- Enriquecimento IP/ASN funciona em todos os perfis, sem restringir identificação à rede declarada. Testar IPv4/IPv6, header de IP forjado, associação de rede sem identidade de bot, PTR sem resolução direta correspondente, domínio com sufixo enganoso, fonte expirada, timeout, snapshot inválido e revogação.
+- Jev recebe somente evidências coletadas, com origem/validade; ausência de fonte vira desconhecido/indisponível. Nenhuma fixture de IP ligado a empresa, isoladamente, pode confirmar revisor ou causar deny. Eventos e cache preservam proveniência e invalidam com mudança de snapshot/validade.
+- Toda nova decisão elegível consulta Jev, salvo controle obrigatório, identidade conclusiva de bot ou cache equivalente validado. Cache invalida com mudanças de evidência/política/perfil/modelo; sessões e tenants ficam isolados. Não existe teto percentual de chamadas adotado para economizar.
+- Respostas inválidas, timeout, 401, 429 e falha do banco/provedor têm comportamento definido e verificável.
+- Teste concorrente comprova que reservas impedem novas chamadas acima do teto; uso desconhecido não some do saldo.
+- Open redirect, loops, SSRF em verificações e acesso entre tenants possuem testes direcionados.
+- Conjunto rotulado independente, incluindo perfil geral e campanhas sem origem, separado por sessão/campanha e período dos dados de ajuste, com visitantes humanos, automação abusiva e não abusiva, bots verificados, ausência de sinais, entradas hostis e navegadores internos. Rótulos independentes da própria IA; abandono/aprovação de desafio isoladamente não comprova abuso/legitimidade.
+- Comparar regras isoladas, Jev por decisão elegível sem cache e Jev com otimizações. Medir matriz de confusão de humano/automação e suficiência, recall de automação, bots indevidamente liberados à principal, humanos indevidamente enviados à alternativa, recall de abuso pelos controles rígidos, precisão dos desafios, falsos bloqueios, incerteza e fallback por perfil. Rótulo de automação é separado de abuso: crawlers legítimos encaminhados à alternativa não são falsos positivos de abuso. Relatar também resultado end-to-end sob timeout e saturação.
+- Meta de fricção por decisão: limite superior do intervalo de confiança de 95% abaixo de 1% para humanos indevidamente enviados à alternativa ou a desafio, por perfil promovido. Relatar cada taxa e a união por decisão; degradação por falha é medida separadamente e no resultado total. Meta inicial proposta de recall de automação de pelo menos 90% no conjunto rotulado; medir recall de abuso separadamente. Acompanhar intervalos de confiança, cobertura e classes de automação/abuso. Esses valores são critérios de projeto a validar, não desempenho observado. Bloquear promoção se amostra for insuficiente ou proteção/fricção falharem, mantendo shadow. Precisão não é deduzida da confiança do modelo.
+- Aceitar otimização de regras/cache/contexto somente se mantiver o gate de fricção e a perda de recall de automação tiver limite superior unilateral de 95% de no máximo 1 ponto percentual frente ao baseline sem otimização, no mesmo conjunto pareado. Se inconclusivo, ampliar avaliação ou manter baseline. Escolher a alternativa de maior recall dentro dos limites de fricção/latência; custo serve de desempate.
+- Testar carga em cenários com 10%, 50% e 100% de decisões elegíveis chamando Jev. Começar com 10 requests/s sustentados e ampliar conforme limites reais da conta; metas de 100/s por 15 minutos e pico 200/s por 60s da referência só valem com capacidade contratada compatível. Testar sobrecarga separadamente: fallback não conta como capacidade Jev entregue.
+- Meta inicial: pelo menos 99% das decisões elegíveis sem regra/cache concluídas pelo Jev dentro do deadline, sob carga suportada e fornecedor saudável. Acompanhar disponibilidade real, timeout e degradação por orçamento/capacidade separadamente. Se não cumprir, readequar arquitetura, deadline ou capacidade antes de promover.
+- Medir p50/p95/p99 e saturação na região escolhida. Verificar visualmente desktop e mobile, teclado e estados vazios/erro.
+- Nenhuma credencial no frontend, logs ou nota; métricas de demonstração identificadas. Recursos que dependem de domínio/API real ficam claramente pendentes enquanto faltarem acessos.
+
+Promoção: shadow por perfil → canário em poucas campanhas → expansão conforme evidência. Definir limites versionados de erro, fallback e fricção com base no baseline e automatizar rollback para política protegida válida ou alternativa, sem desativar proteção silenciosamente; executar avaliação de qualidade em janela compatível com a disponibilidade de rótulos. Entrega inclui migrations, instalação, restauração, relatório de avaliação/carga e demonstração criar duas páginas → simular humano/bot/incerteza/falha → ativar → resolver em ambos os destinos → consultar motivo → pausar/reverter.
+
+## 11. Handoff preparado — NÃO ENVIADO
+
+Destinatário descoberto: `orquestrador`. Remetente desta spec: `spec`. A conexão entre esses agentes foi confirmada por `maestri list`; não significa que o orquestrador tenha recebido esta nota, nem que tenha acesso direto ao portal.
+
+Mensagem preparada para envio depois da aprovação:
+
+> Orquestrador, você está conectado ao agente spec neste workspace. O usuário aprovou a versão vigente de SPEC-ORQUESTRACAO-JEV.md para prosseguirmos. Use-a como contrato, incorporando a referência SPEC-JEV-ECONOMICA.md conforme consolidada. Diretriz central: eficiência de decisão antes de economia. Jev avalia toda nova decisão elegível, exceto regra conclusiva ou cache equivalente validado; não limite a IA a 10% dos acessos nem corte contexto para economizar. Priorize recall de automação, fricção baixa para humanos, controles de abuso, latência e disponibilidade. O portal cloaker foi inspecionado como referência visual do Cloakfy; confirme suas próprias conexões. Comece pela etapa 0, valide acesso ao Jev e organize entregáveis e dependências. Use perfil geral por padrão e “Origem da campanha” opcional nas opções avançadas. Colete IP/ASN/identidade no backend para todas as campanhas, com fontes versionadas e validade; não espere que o Jev descubra isso sozinho nem confunda rede empresarial com bot confirmado. Função primordial: proteger a principal contra automação identificada. Exija dois destinos; bot verificado e automação provável vão à alternativa, humano provável vai à principal, inconclusivo vai a desafio/fallback; indisponibilidade não libera silenciosamente a principal. Não conservar a regra antiga de liberar bots legítimos na principal. Demonstre esse roteamento e suas falhas. Nomeie as fontes de identidade disponíveis e suas limitações. O MVP redirect protege o link, não esconde a origem nem bloqueia acesso direto à URL principal. Preserve shadow, orçamento explícito e gates de qualidade. Informe bloqueios concretos sem inventar integrações concluídas.
+
+Não enviar esta mensagem antes da afirmação do usuário. No handoff, transmitir a versão aprovada integralmente ou um caminho acessível e confirmar recebimento. Se houver revisão, atualizar a nota antes do envio.
