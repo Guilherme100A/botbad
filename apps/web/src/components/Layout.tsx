@@ -1,6 +1,9 @@
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { useAuth } from '../context/AuthContext.js';
 import { engineStatus } from '../mock/data.js';
+import { Scramble } from './Scramble.js';
+
+const SPOT_SELECTOR = '.card, .hero, .campaign-card, .list, .info-item, .sim-card, .table-wrap';
 
 interface NavItem {
   path: string;
@@ -107,6 +110,19 @@ export function Layout({ route, children }: LayoutProps) {
   const { logout } = useAuth();
   const healthy = engineStatus.healthy;
 
+  // Cursor-following glow on surfaces: one listener, CSS does the rest.
+  useEffect(() => {
+    const onMove = (e: PointerEvent) => {
+      const el = (e.target as Element | null)?.closest?.<HTMLElement>(SPOT_SELECTOR);
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      el.style.setProperty('--mx', `${e.clientX - r.left}px`);
+      el.style.setProperty('--my', `${e.clientY - r.top}px`);
+    };
+    window.addEventListener('pointermove', onMove, { passive: true });
+    return () => window.removeEventListener('pointermove', onMove);
+  }, []);
+
   return (
     <div className="layout">
       <div
@@ -158,7 +174,9 @@ export function Layout({ route, children }: LayoutProps) {
 
         <div className="page-header">
           <div className="page-header-left">
-            <h1 className="page-title">{PAGE_TITLES[route] ?? ''}</h1>
+            <h1 className="page-title">
+              <Scramble key={route} text={PAGE_TITLES[route] ?? ''} duration={520} caret />
+            </h1>
             <span className="page-subtitle">{PAGE_SUBTITLES[route] ?? ''}</span>
           </div>
         </div>

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext.js';
 import { MatrixRain } from '../components/MatrixRain.js';
+import { Scramble } from '../components/Scramble.js';
 
 export function Login() {
   const { login, loading } = useAuth();
@@ -33,7 +34,7 @@ export function Login() {
               <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
             </svg>
           </div>
-          <h1 className="login-title">Jev router</h1>
+          <h1 className="login-title"><Scramble text="Jev router" duration={800} delay={200} caret /></h1>
           <p className="login-sub">Entre para continuar</p>
         </div>
 
