@@ -1,6 +1,6 @@
 import type { NetworkEvidence } from '@botbad/contracts';
 import { promises as dns } from 'node:dns';
-import { isIP } from 'node:net';
+import { BlockList, isIP } from 'node:net';
 
 const KNOWN_BOT_DEFINITIONS: BotDefinition[] = [
   {
@@ -63,7 +63,24 @@ const ASN_SOURCE_ID = 'local-asn-db';
 const ASN_SOURCE_VERSION = '2026-10-01';
 const ASN_VALIDITY_DAYS = 7;
 
-const DNS_TIMEOUT_MS = 3000;
+// Must fit inside the total decision deadline (spec §4.1); slow DNS means "unknown", never a guessed identity.
+const DNS_TIMEOUT_MS = 400;
+
+/** Trusted proxy entries may be single addresses or CIDR ranges (Docker networks change container IPs). */
+function isTrustedProxy(peer: string, trustedProxies: string[]): boolean {
+  const family = isIP(peer);
+  if (!family) return false;
+  const list = new BlockList();
+  for (const entry of trustedProxies) {
+    const [addr, bits] = entry.split('/');
+    const entryFamily = isIP(addr ?? '');
+    if (!entryFamily) continue;
+    const type = entryFamily === 6 ? 'ipv6' : 'ipv4';
+    if (bits !== undefined) list.addSubnet(addr!, Number(bits), type);
+    else list.addAddress(normalizeIp(addr!), type);
+  }
+  return list.check(peer, family === 6 ? 'ipv6' : 'ipv4');
+}
 
 export function extractClientIp(
   peerIp: string,
@@ -72,7 +89,7 @@ export function extractClientIp(
 ): string {
   const normalizedPeer = normalizeIp(peerIp);
 
-  if (trustedProxies.length > 0 && trustedProxies.includes(normalizedPeer)) {
+  if (trustedProxies.length > 0 && isTrustedProxy(normalizedPeer, trustedProxies)) {
     const forwarded = headers['x-forwarded-for'];
     if (forwarded) {
       const firstIp = forwarded.split(',')[0]?.trim();

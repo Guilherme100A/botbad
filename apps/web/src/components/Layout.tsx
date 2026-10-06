@@ -70,6 +70,8 @@ const PAGE_SUBTITLES: Record<string, string> = {
   '/settings': 'Organização, papéis e limites',
 };
 
+const ROLE_LABELS: Record<string, string> = { owner: 'Proprietário', operator: 'Operador', viewer: 'Visualizador' };
+
 interface LayoutProps {
   route: string;
   children: ReactNode;
@@ -134,7 +136,9 @@ function NavGroup({ label, items, route, onNavigate }: { label: string; items: N
 
 export function Layout({ route, children }: LayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const { logout } = useAuth();
+  const { logout, session } = useAuth();
+  const displayName = session?.user.name || session?.user.email || 'Operador';
+  const roleLabel = session ? ROLE_LABELS[session.role] : '';
   const healthy = engineStatus.healthy;
 
   // Cursor-following glow on surfaces: one listener, CSS does the rest.
@@ -171,10 +175,10 @@ export function Layout({ route, children }: LayoutProps) {
 
         <div className="sidebar-footer">
           <div className="sidebar-profile" onClick={logout}>
-            <div className="sidebar-avatar">O</div>
+            <div className="sidebar-avatar">{displayName.charAt(0).toUpperCase()}</div>
             <div className="sidebar-profile-info">
-              <div className="sidebar-profile-name">Operador</div>
-              <div className="sidebar-profile-role">Sair da conta</div>
+              <div className="sidebar-profile-name" title={session?.user.email}>{displayName}</div>
+              <div className="sidebar-profile-role">{roleLabel ? `${roleLabel} · ` : ''}Sair da conta</div>
             </div>
           </div>
           <div className="sidebar-status">

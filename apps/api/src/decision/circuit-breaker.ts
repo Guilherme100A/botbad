@@ -14,6 +14,7 @@ export class CircuitBreaker {
   private state: CircuitState = 'closed';
   private failureCount = 0;
   private lastFailureAt = 0;
+  private probeInFlight = false;
   private readonly config: CircuitBreakerConfig;
 
   constructor(config: Partial<CircuitBreakerConfig> = {}) {
@@ -26,23 +27,33 @@ export class CircuitBreaker {
     if (this.state === 'open') {
       if (Date.now() - this.lastFailureAt >= this.config.resetTimeoutMs) {
         this.state = 'half-open';
+        this.probeInFlight = true;
         return true;
       }
       return false;
     }
 
-    // half-open: allow one test call
+    // half-open: exactly one probe at a time; everyone else falls back until it reports.
+    if (this.probeInFlight) return false;
+    this.probeInFlight = true;
     return true;
+  }
+
+  /** The caller got the probe slot but never called the engine (e.g. no budget): hand the slot back. */
+  abandonProbe(): void {
+    this.probeInFlight = false;
   }
 
   recordSuccess(): void {
     this.failureCount = 0;
+    this.probeInFlight = false;
     this.state = 'closed';
   }
 
   recordFailure(): void {
     this.failureCount++;
     this.lastFailureAt = Date.now();
+    this.probeInFlight = false;
 
     if (this.state === 'half-open') {
       this.state = 'open';
@@ -65,6 +76,7 @@ export class CircuitBreaker {
     this.state = 'closed';
     this.failureCount = 0;
     this.lastFailureAt = 0;
+    this.probeInFlight = false;
   }
 }
 

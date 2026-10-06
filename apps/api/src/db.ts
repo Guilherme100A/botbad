@@ -1,18 +1,21 @@
 import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres';
 import pg from 'pg';
 import * as schema from '@botbad/db';
+import { getConfig } from './config.js';
 
-let db: NodePgDatabase<typeof schema> | null = null;
+export type Db = NodePgDatabase<typeof schema>;
 
-export function initDb(connectionString?: string): NodePgDatabase<typeof schema> {
+let db: Db | null = null;
+
+export function initDb(connectionString?: string): Db {
   const pool = new pg.Pool({
-    connectionString: connectionString ?? process.env['DATABASE_URL'],
+    connectionString: connectionString ?? getConfig().databaseUrl,
   });
   db = drizzle(pool, { schema });
   return db;
 }
 
-export function getDb(): NodePgDatabase<typeof schema> {
+export function getDb(): Db {
   if (!db) {
     return initDb();
   }

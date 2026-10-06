@@ -4,14 +4,17 @@ import { eq } from 'drizzle-orm';
 import { destinations } from '@botbad/db';
 import { authMiddleware, requireRole } from '../middleware/auth.js';
 import { getDb } from '../db.js';
+import { getConfig } from '../config.js';
+import { checkDestinationUrl } from '../decision/destination-url.js';
 
 const destinationRoutes = new Hono();
 
 destinationRoutes.use('*', authMiddleware);
 
 const createInput = z.object({
-  url: z.string().url().refine((u) => u.startsWith('https://'), {
-    message: 'Destination URL must use HTTPS',
+  url: z.string().max(2048).superRefine((u, ctx) => {
+    const check = checkDestinationUrl(u, getConfig().publicBaseUrl);
+    if (!check.ok) ctx.addIssue({ code: z.ZodIssueCode.custom, message: check.reason });
   }),
   label: z.string().min(1).max(255),
 });

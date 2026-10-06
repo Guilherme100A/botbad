@@ -67,7 +67,7 @@ export function Login() {
           </button>
 
           <div className="form-hint" style={{ textAlign: 'center', marginTop: 20 }}>
-            Ambiente de desenvolvimento · qualquer e-mail e senha
+            Use a conta criada no seed (npm run db:seed)
           </div>
         </form>
       </div>

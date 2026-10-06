@@ -1,3 +1,26 @@
-localhost {
-	reverse_proxy api:3000
+# SITE_ADDRESS: your domain (Caddy gets the TLS certificate automatically) or "localhost" to try locally.
+{$SITE_ADDRESS:localhost} {
+	encode zstd gzip
+
+	# API + router. Caddy replaces any client-sent X-Forwarded-For with the real peer,
+	# and the API trusts that header only from this container (TRUSTED_PROXIES).
+	@api path /r/* /auth/* /campaigns /campaigns/* /destinations /destinations/* /health
+	handle @api {
+		reverse_proxy api:3000
+	}
+
+	# Panel (hash routing, so every path is index.html)
+	handle {
+		root * /srv
+		try_files {path} /index.html
+		file_server
+	}
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+		X-Frame-Options DENY
+		-Server
+	}
 }

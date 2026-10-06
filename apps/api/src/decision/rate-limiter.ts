@@ -130,4 +130,68 @@ export function resetForTesting(): void {
   globalDay.resetAt = getEndOfDay();
   globalMonth.count = 0;
   globalMonth.resetAt = getEndOfMonth();
+  clients.clear();
+}
+
+// ── Per-visitor (client IP) volume limit + frequency counters for Jev ──
+
+const MINUTE = 60_000;
+const HOUR = 60 * MINUTE;
+const MAX_TRACKED_CLIENTS = 100_000;
+
+interface ClientCounters {
+  minuteStart: number;
+  minute: number;
+  hourStart: number;
+  hour: number;
+  /** campaignId -> last seen, for "distinct campaigns in the last hour". */
+  campaigns: Map<string, number>;
+}
+
+const clients = new Map<string, ClientCounters>();
+
+export interface ClientActivity {
+  limited: boolean;
+  requestsLastMinute: number;
+  requestsLastHour: number;
+  uniqueCampaignsLastHour: number;
+}
+
+function clientLimitPerMinute(): number {
+  return Number(process.env['RATE_LIMIT_PER_IP_PER_MIN'] ?? 120);
+}
+
+/** Counts this request for the client and reports whether it is over the per-minute limit. */
+export function touchClient(clientKey: string, campaignId: string, now: number = Date.now()): ClientActivity {
+  let c = clients.get(clientKey);
+  if (!c) {
+    if (clients.size >= MAX_TRACKED_CLIENTS) pruneClients(now);
+    c = { minuteStart: now, minute: 0, hourStart: now, hour: 0, campaigns: new Map() };
+    clients.set(clientKey, c);
+  }
+  if (now - c.minuteStart >= MINUTE) { c.minuteStart = now; c.minute = 0; }
+  if (now - c.hourStart >= HOUR) { c.hourStart = now; c.hour = 0; }
+  c.minute++;
+  c.hour++;
+  c.campaigns.set(campaignId, now);
+  for (const [id, seen] of c.campaigns) if (now - seen >= HOUR) c.campaigns.delete(id);
+
+  return {
+    limited: c.minute > clientLimitPerMinute(),
+    requestsLastMinute: c.minute,
+    requestsLastHour: c.hour,
+    uniqueCampaignsLastHour: c.campaigns.size,
+  };
+}
+
+function pruneClients(now: number): void {
+  for (const [key, c] of clients) if (now - c.hourStart >= HOUR) clients.delete(key);
+  // Still full (an active flood): drop the oldest entries rather than grow without bound.
+  if (clients.size >= MAX_TRACKED_CLIENTS) {
+    let excess = clients.size - MAX_TRACKED_CLIENTS + 1000;
+    for (const key of clients.keys()) {
+      if (excess-- <= 0) break;
+      clients.delete(key);
+    }
+  }
 }

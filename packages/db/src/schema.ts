@@ -17,6 +17,21 @@ export const tenants = pgTable('tenants', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
+export const users = pgTable(
+  'users',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    email: varchar('email', { length: 320 }).notNull(),
+    name: varchar('name', { length: 255 }),
+    /** scrypt$N$r$p$salt$hash (see apps/api/src/auth/password.ts) */
+    passwordHash: text('password_hash').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    emailIdx: uniqueIndex('users_email_idx').on(t.email),
+  }),
+);
+
 export const memberships = pgTable(
   'memberships',
   {
@@ -24,7 +39,9 @@ export const memberships = pgTable(
     tenantId: uuid('tenant_id')
       .notNull()
       .references(() => tenants.id),
-    userId: uuid('user_id').notNull(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id),
     role: varchar('role', { length: 20 }).notNull().$type<'owner' | 'operator' | 'viewer'>(),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },

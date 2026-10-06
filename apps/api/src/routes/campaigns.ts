@@ -6,6 +6,8 @@ import { NetworkProfileSchema } from '@botbad/contracts';
 import { authMiddleware, requireRole } from '../middleware/auth.js';
 import { getDb } from '../db.js';
 import { randomBytes } from 'node:crypto';
+import { getConfig } from '../config.js';
+import { checkDestinationUrl } from '../decision/destination-url.js';
 
 const campaignRoutes = new Hono();
 
@@ -42,10 +44,12 @@ async function validateDestinationOwnership(
 }
 
 function detectLoop(slug: string | null, url: string): boolean {
-  if (!slug) return false;
   try {
     const parsed = new URL(url);
-    return parsed.pathname === `/r/${slug}`;
+    // Same campaign link on any host is a loop; any /r/* on our own host is one too.
+    if (slug && parsed.pathname === `/r/${slug}`) return true;
+    const check = checkDestinationUrl(url, getConfig().publicBaseUrl);
+    return !check.ok && check.reason.includes('loop');
   } catch {
     return false;
   }
@@ -114,11 +118,14 @@ campaignRoutes.post('/', requireRole('owner', 'operator'), async (c) => {
     return c.json({ code: 'DESTINATION_INVALID', message: 'Alternative destination not found or not owned by tenant' }, 400);
   }
 
-  if (!primary.url!.startsWith('https://')) {
-    return c.json({ code: 'DESTINATION_NOT_HTTPS', message: 'Primary destination must use HTTPS' }, 400);
+  // Re-check: destinations may predate the current rules.
+  const primaryCheck = checkDestinationUrl(primary.url!, getConfig().publicBaseUrl);
+  if (!primaryCheck.ok) {
+    return c.json({ code: 'DESTINATION_INVALID', message: `Destino principal: ${primaryCheck.reason}` }, 400);
   }
-  if (!alternative.url!.startsWith('https://')) {
-    return c.json({ code: 'DESTINATION_NOT_HTTPS', message: 'Alternative destination must use HTTPS' }, 400);
+  const alternativeCheck = checkDestinationUrl(alternative.url!, getConfig().publicBaseUrl);
+  if (!alternativeCheck.ok) {
+    return c.json({ code: 'DESTINATION_INVALID', message: `Destino alternativo: ${alternativeCheck.reason}` }, 400);
   }
 
   const [row] = await db
@@ -278,11 +285,14 @@ campaignRoutes.post('/:id/activate', requireRole('owner', 'operator'), async (c)
     return c.json({ code: 'ALTERNATIVE_MISSING', message: 'Alternative destination not found' }, 400);
   }
 
-  if (!primary.url!.startsWith('https://')) {
-    return c.json({ code: 'DESTINATION_NOT_HTTPS', message: 'Primary destination must use HTTPS' }, 400);
+  // Re-check: destinations may predate the current rules.
+  const primaryCheck = checkDestinationUrl(primary.url!, getConfig().publicBaseUrl);
+  if (!primaryCheck.ok) {
+    return c.json({ code: 'DESTINATION_INVALID', message: `Destino principal: ${primaryCheck.reason}` }, 400);
   }
-  if (!alternative.url!.startsWith('https://')) {
-    return c.json({ code: 'DESTINATION_NOT_HTTPS', message: 'Alternative destination must use HTTPS' }, 400);
+  const alternativeCheck = checkDestinationUrl(alternative.url!, getConfig().publicBaseUrl);
+  if (!alternativeCheck.ok) {
+    return c.json({ code: 'DESTINATION_INVALID', message: `Destino alternativo: ${alternativeCheck.reason}` }, 400);
   }
 
   if (campaign.primaryDestinationId === campaign.alternativeDestinationId) {
@@ -298,19 +308,23 @@ campaignRoutes.post('/:id/activate', requireRole('owner', 'operator'), async (c)
     return c.json({ code: 'DESTINATION_LOOP', message: 'Destination URL creates a loop with the campaign link' }, 400);
   }
 
-  const [updated] = await db
-    .update(campaigns)
-    .set({ status: 'active', slug, updatedAt: new Date() })
-    .where(and(eq(campaigns.id, id), eq(campaigns.tenantId, auth.tenantId)))
-    .returning();
+  // Status change and its audit entry commit together or not at all.
+  const updated = await db.transaction(async (tx) => {
+    const [row] = await tx
+      .update(campaigns)
+      .set({ status: 'active', slug, updatedAt: new Date() })
+      .where(and(eq(campaigns.id, id), eq(campaigns.tenantId, auth.tenantId)))
+      .returning();
 
-  await db.insert(auditLog).values({
-    tenantId: auth.tenantId,
-    userId: auth.userId,
-    action: 'campaign.activate',
-    entityType: 'campaign',
-    entityId: id,
-    changes: { status: { from: campaign.status, to: 'active' }, slug },
+    await tx.insert(auditLog).values({
+      tenantId: auth.tenantId,
+      userId: auth.userId,
+      action: 'campaign.activate',
+      entityType: 'campaign',
+      entityId: id,
+      changes: { status: { from: campaign.status, to: 'active' }, slug },
+    });
+    return row;
   });
 
   return c.json(updated);

@@ -1,4 +1,4 @@
-import { eq, and, sql } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { budgetReservations } from '@botbad/db';
 import { getDb } from '../db.js';
 
@@ -52,79 +52,52 @@ export async function reserveBudget(
   startOfMonth.setUTCHours(0, 0, 0, 0);
 
   try {
-    // Atomic INSERT ... SELECT to prevent TOCTOU race
-    const result = await db.execute(sql`
-      INSERT INTO budget_reservations (id, tenant_id, tokens_reserved, status, reserved_at)
-      SELECT gen_random_uuid(), ${tenantId}, ${config.reservationSize}, 'pending', now()
-      WHERE (
-        SELECT coalesce(sum(tokens_reserved), 0)
-        FROM budget_reservations
-        WHERE tenant_id = ${tenantId} AND reserved_at >= ${startOfDay}
-      ) + ${config.reservationSize} <= ${config.dailyTokenLimit}
-      AND (
-        SELECT coalesce(sum(tokens_reserved), 0)
-        FROM budget_reservations
-        WHERE tenant_id = ${tenantId} AND reserved_at >= ${startOfMonth}
-      ) + ${config.reservationSize} <= ${config.monthlyTokenLimit}
-      RETURNING id
-    `);
+    const outcome = await db.transaction(async (tx) => {
+      // Serialize reservations per tenant: concurrent requests cannot both pass the ceiling check.
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${`budget:${tenantId}`}))`);
 
-    const rows = result as unknown as Array<{ id: string }>;
-    if (!rows || rows.length === 0) {
-      // Check which limit was hit for alerts
-      const dailyRows = await db
-        .select({
-          total: sql<number>`coalesce(sum(${budgetReservations.tokensReserved}), 0)`.as('total'),
-        })
-        .from(budgetReservations)
-        .where(
-          and(
-            eq(budgetReservations.tenantId, tenantId),
-            sql`${budgetReservations.reservedAt} >= ${startOfDay}`,
-          ),
-        );
-      const dailyUsed = Number(dailyRows[0]?.total ?? 0);
-      checkAlerts(tenantId, dailyUsed, config.dailyTokenLimit, 'daily');
+      // Released reservations gave their tokens back; used ones hold the reconciled real usage.
+      const totals = await tx.execute<{ daily: string; monthly: string }>(sql`
+        SELECT
+          coalesce(sum(tokens_reserved) FILTER (WHERE reserved_at >= ${startOfDay}), 0) AS daily,
+          coalesce(sum(tokens_reserved), 0) AS monthly
+        FROM budget_reservations
+        WHERE tenant_id = ${tenantId} AND reserved_at >= ${startOfMonth} AND status <> 'released'
+      `);
+      const daily = Number(totals.rows[0]?.daily ?? 0);
+      const monthly = Number(totals.rows[0]?.monthly ?? 0);
 
-      if (dailyUsed + config.reservationSize > config.dailyTokenLimit) {
-        return { reserved: false, reason: 'Daily token budget exhausted' };
+      if (daily + config.reservationSize > config.dailyTokenLimit) {
+        return { reserved: false as const, scope: 'daily' as const, daily, monthly };
       }
-      return { reserved: false, reason: 'Monthly token budget exhausted' };
+      if (monthly + config.reservationSize > config.monthlyTokenLimit) {
+        return { reserved: false as const, scope: 'monthly' as const, daily, monthly };
+      }
+
+      const [row] = await tx
+        .insert(budgetReservations)
+        .values({ tenantId, tokensReserved: config.reservationSize, status: 'pending' })
+        .returning({ id: budgetReservations.id });
+      return {
+        reserved: true as const,
+        reservationId: row!.id,
+        daily: daily + config.reservationSize,
+        monthly: monthly + config.reservationSize,
+      };
+    });
+
+    checkAlerts(tenantId, outcome.daily, config.dailyTokenLimit, 'daily');
+    checkAlerts(tenantId, outcome.monthly, config.monthlyTokenLimit, 'monthly');
+
+    if (!outcome.reserved) {
+      return {
+        reserved: false,
+        reason: outcome.scope === 'daily' ? 'Daily token budget exhausted' : 'Monthly token budget exhausted',
+      };
     }
-
-    const reservationId = rows[0].id;
-
-    // Fire alerts asynchronously
-    const dailyRows = await db
-      .select({
-        total: sql<number>`coalesce(sum(${budgetReservations.tokensReserved}), 0)`.as('total'),
-      })
-      .from(budgetReservations)
-      .where(
-        and(
-          eq(budgetReservations.tenantId, tenantId),
-          sql`${budgetReservations.reservedAt} >= ${startOfDay}`,
-        ),
-      );
-    const dailyUsed = Number(dailyRows[0]?.total ?? 0);
-    checkAlerts(tenantId, dailyUsed, config.dailyTokenLimit, 'daily');
-
-    const monthlyRows = await db
-      .select({
-        total: sql<number>`coalesce(sum(${budgetReservations.tokensReserved}), 0)`.as('total'),
-      })
-      .from(budgetReservations)
-      .where(
-        and(
-          eq(budgetReservations.tenantId, tenantId),
-          sql`${budgetReservations.reservedAt} >= ${startOfMonth}`,
-        ),
-      );
-    const monthlyUsed = Number(monthlyRows[0]?.total ?? 0);
-    checkAlerts(tenantId, monthlyUsed, config.monthlyTokenLimit, 'monthly');
-
-    return { reserved: true, reservationId };
-  } catch {
+    return { reserved: true, reservationId: outcome.reservationId };
+  } catch (err) {
+    console.error('[budget] reservation failed:', err instanceof Error ? err.message : err);
     return { reserved: false, reason: 'Budget check failed (database unavailable)' };
   }
 }
@@ -141,6 +114,8 @@ export async function reconcileBudget(
         tokensUsed,
         status: 'used',
         releasedAt: new Date(),
+        // Count real usage against the ceiling. Unknown usage (0) keeps the conservative reservation.
+        ...(tokensUsed > 0 ? { tokensReserved: tokensUsed } : {}),
       })
       .where(eq(budgetReservations.id, reservationId));
   } catch {

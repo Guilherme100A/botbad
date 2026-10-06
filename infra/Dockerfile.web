@@ -1,0 +1,15 @@
+# Panel image: Vite build served by Caddy, which also proxies the API (same origin, no CORS needed).
+FROM node:20-alpine AS build
+WORKDIR /app
+COPY package.json package-lock.json ./
+COPY apps/api/package.json apps/api/
+COPY apps/web/package.json apps/web/
+COPY packages/contracts/package.json packages/contracts/
+COPY packages/db/package.json packages/db/
+RUN npm ci
+COPY . .
+RUN npm run build -w @botbad/web
+
+FROM caddy:2
+COPY infra/Caddyfile /etc/caddy/Caddyfile
+COPY --from=build /app/apps/web/dist /srv

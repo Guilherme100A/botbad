@@ -1,43 +1,82 @@
+# Run from the repo root:
+#   docker compose --env-file .env -f infra/docker-compose.yml up -d --build
+# First owner account (once):
+#   docker compose --env-file .env -f infra/docker-compose.yml run --rm migrate node dist/seed.js
 services:
   postgres:
     image: postgres:16
-    ports:
-      - "5432:5432"
     environment:
       POSTGRES_DB: botbad
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
     volumes:
       - pgdata:/var/lib/postgresql/data
+    # Not published: only the api/migrate containers reach it.
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
       timeout: 3s
-      retries: 5
+      retries: 10
+    networks: [app]
 
-  caddy:
-    image: caddy:2
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile
-      - caddy_data:/data
-      - caddy_config:/config
+  migrate:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile.api
+    command: ["node", "dist/migrate.js"]
+    environment:
+      DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD}@postgres:5432/botbad
+      SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-}
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-}
     depends_on:
-      - api
+      postgres:
+        condition: service_healthy
+    restart: "no"
+    networks: [app]
 
   api:
     build:
       context: ..
       dockerfile: infra/Dockerfile.api
-    ports:
-      - "3000:3000"
     env_file:
       - ../.env
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD}@postgres:5432/botbad
+      TRUSTED_PROXIES: 172.28.0.10
+    expose:
+      - "3000"
     depends_on:
-      postgres:
-        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    networks: [app]
+
+  web:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile.web
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:-localhost}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - api
+    restart: unless-stopped
+    networks:
+      app:
+        # Fixed so the API can trust exactly this proxy for X-Forwarded-For.
+        ipv4_address: 172.28.0.10
+
+networks:
+  app:
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16
 
 volumes:
   pgdata:

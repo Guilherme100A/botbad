@@ -11,7 +11,7 @@ import type {
 import { campaigns, destinations, decisionEvents } from '@botbad/db';
 import { getDb } from '../db.js';
 import { extractClientIp, collectEvidence } from './evidence.js';
-import { checkRateLimit, recordRequest } from './rate-limiter.js';
+import { checkRateLimit, recordRequest, touchClient } from './rate-limiter.js';
 import { jevCircuitBreaker } from './circuit-breaker.js';
 import { reserveBudget, reconcileBudget, releaseBudget } from './budget.js';
 import { JevApiError, JevTimeoutError } from '../adapters/jev-real.js';
@@ -177,6 +177,7 @@ export async function executePipelineWithData(
   if (!options?.skipBudget) {
     const budgetResult = await reserveBudget(campaign.tenantId);
     if (!budgetResult.reserved) {
+      jevCircuitBreaker.abandonProbe();
       const decision = makeDecision('route_alternative', 'fallback', 'BUDGET_EXHAUSTED', networkProfile, altDest.id, null, evidenceVersion, startTime);
       return { decision, destinationUrl: altDest.url, jevAssessment: null };
     }
@@ -255,8 +256,16 @@ export async function executePipeline(input: PipelineInput): Promise<PipelineRes
 
   recordRequest(campaign.tenantId);
 
-  // Step 3: Collect evidence
+  // Step 2b: per-visitor volume limit (spec: volumetric limits per IP/visitor, before Jev)
   const clientIp = extractClientIp(input.peerIp, input.headers, input.trustedProxies);
+  const activity = touchClient(clientIp || 'unknown', campaign.id);
+  if (activity.limited) {
+    const decision = makeDecision('deny', 'rule', 'RATE_LIMIT', networkProfile, null, null, null, startTime);
+    void recordEvent(decision, campaign.tenantId, campaign.id, { status: 'unavailable', asn: null, organization: null, botIdentity: null, stale: false, sourceId: null, sourceVersion: null, fetchedAt: null, expiresAt: null, verificationMethod: null, verifiedAt: null }, null);
+    return { decision, destinationUrl: null, jevAssessment: null };
+  }
+
+  // Step 3: Collect evidence
   const evidence = await collectEvidence(clientIp, input.userAgent);
   const evidenceVersion = evidence.sourceVersion;
 
@@ -300,6 +309,7 @@ export async function executePipeline(input: PipelineInput): Promise<PipelineRes
   // Budget reservation
   const budgetResult = await reserveBudget(campaign.tenantId);
   if (!budgetResult.reserved) {
+    jevCircuitBreaker.abandonProbe();
     const decision = makeDecision('route_alternative', 'fallback', 'BUDGET_EXHAUSTED', networkProfile, altDest.id, null, evidenceVersion, startTime);
     void recordEvent(decision, campaign.tenantId, campaign.id, evidence, null);
     return { decision, destinationUrl: altDest.url, jevAssessment: null };
@@ -319,9 +329,9 @@ export async function executePipeline(input: PipelineInput): Promise<PipelineRes
       sessionAgeMs: null,
     },
     frequencyCounters: {
-      requestsLastMinute: 0,
-      requestsLastHour: 0,
-      uniqueCampaignsLastHour: 0,
+      requestsLastMinute: activity.requestsLastMinute,
+      requestsLastHour: activity.requestsLastHour,
+      uniqueCampaignsLastHour: activity.uniqueCampaignsLastHour,
     },
     abuseSignals: {
       rateLimitHit: false,
@@ -366,6 +376,20 @@ export async function executePipeline(input: PipelineInput): Promise<PipelineRes
   return { decision, destinationUrl, jevAssessment };
 }
 
+/**
+ * Confidence thresholds (spec §5.1): releasing the primary needs more certainty than routing
+ * probable automation away. These are conservative placeholders until calibration on a labeled
+ * set; override per environment with JEV_MIN_CONFIDENCE_PRIMARY / JEV_MIN_CONFIDENCE_AUTOMATION.
+ */
+export function getThresholds(): { primary: number; automation: number; maxAutomationForPrimary: number } {
+  return {
+    primary: Number(process.env['JEV_MIN_CONFIDENCE_PRIMARY'] ?? 0.75),
+    automation: Number(process.env['JEV_MIN_CONFIDENCE_AUTOMATION'] ?? 0.6),
+    // "Sem contradição forte": a likely_human verdict that still gives automation this much is not trusted.
+    maxAutomationForPrimary: Number(process.env['JEV_MAX_AUTOMATION_FOR_PRIMARY'] ?? 0.3),
+  };
+}
+
 export function applyPolicy(
   assessment: JevAssessment,
   networkProfile: NetworkProfile,
@@ -374,16 +398,25 @@ export function applyPolicy(
   evidenceVersion: string | null,
   startTime: number,
 ): RoutingDecision {
+  const t = getThresholds();
   switch (assessment.assessment) {
     case 'likely_human':
+      if (assessment.confidence >= t.primary && assessment.probabilities.likely_automation < t.maxAutomationForPrimary) {
+        return makeDecision(
+          'route_primary', 'jev', 'JEV_HUMAN_PRIMARY',
+          networkProfile, primaryDestId, null, evidenceVersion, startTime,
+        );
+      }
+      // Uncertain human: never release the primary on doubt, and never label the visitor a bot either.
       return makeDecision(
-        'route_primary', 'jev', 'JEV_HUMAN_PRIMARY',
-        networkProfile, primaryDestId, null, evidenceVersion, startTime,
+        'route_alternative', 'jev', 'LOW_EVIDENCE_CHALLENGE',
+        networkProfile, altDestId, null, evidenceVersion, startTime,
       );
 
     case 'likely_automation':
       return makeDecision(
-        'route_alternative', 'jev', 'JEV_AUTOMATION_ALTERNATIVE',
+        'route_alternative', 'jev',
+        assessment.confidence >= t.automation ? 'JEV_AUTOMATION_ALTERNATIVE' : 'LOW_EVIDENCE_CHALLENGE',
         networkProfile, altDestId, null, evidenceVersion, startTime,
       );
 

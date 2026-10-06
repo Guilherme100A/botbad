@@ -1,6 +1,7 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { createMiddleware } from 'hono/factory';
 import type { Role } from '@botbad/contracts';
+import { getConfig } from '../config.js';
 
 export interface AuthPayload {
   userId: string;
@@ -14,8 +15,6 @@ declare module 'hono' {
     auth: AuthPayload;
   }
 }
-
-const JWT_SECRET = process.env['JWT_SECRET'] ?? 'dev-secret-change-in-production';
 
 function hmacSign(input: string, secret: string): string {
   return createHmac('sha256', secret).update(input).digest('base64url');
@@ -41,7 +40,8 @@ function verifyJwt(token: string, secret: string): AuthPayload {
 
   const payload = JSON.parse(Buffer.from(payloadB64!, 'base64url').toString()) as AuthPayload;
 
-  if (payload.exp && payload.exp < Math.floor(Date.now() / 1000)) {
+  // Every token we issue carries exp; a token without one is not ours.
+  if (typeof payload.exp !== 'number' || payload.exp < Math.floor(Date.now() / 1000)) {
     throw new Error('Token expired');
   }
 
@@ -56,7 +56,7 @@ export const authMiddleware = createMiddleware(async (c, next) => {
 
   const token = header.slice(7);
   try {
-    const payload = verifyJwt(token, JWT_SECRET);
+    const payload = verifyJwt(token, getConfig().jwtSecret);
 
     if (!payload.userId || !payload.tenantId || !payload.role) {
       return c.json({ code: 'UNAUTHORIZED', message: 'Invalid token payload' }, 401);
@@ -79,9 +79,12 @@ export function requireRole(...allowed: Role[]) {
   });
 }
 
-export function signJwt(payload: AuthPayload, secret: string = JWT_SECRET): string {
+export function signJwt(payload: Omit<AuthPayload, 'exp'>, ttlSeconds?: number): string {
+  const config = getConfig();
+  const exp = Math.floor(Date.now() / 1000) + (ttlSeconds ?? config.jwtTtlSeconds);
+  const secret = config.jwtSecret;
   const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url');
-  const body = Buffer.from(JSON.stringify(payload)).toString('base64url');
+  const body = Buffer.from(JSON.stringify({ ...payload, exp })).toString('base64url');
   const signature = hmacSign(`${header}.${body}`, secret);
   return `${header}.${body}.${signature}`;
 }

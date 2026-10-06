@@ -1,6 +1,7 @@
 import type { Campaign, Destination, DecisionEvent } from '@botbad/contracts';
 
-const BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000';
+// In production the panel and the API share an origin behind Caddy; in dev the API runs on :3000.
+const BASE_URL = import.meta.env.VITE_API_URL ?? (import.meta.env.DEV ? 'http://localhost:3000' : '');
 const TOKEN_KEY = 'jev_token';
 
 export function getToken(): string | null {
@@ -39,13 +40,14 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
     body: body != null ? JSON.stringify(body) : undefined,
   });
 
-  if (res.status === 401) {
+  // A 401 from the login form means wrong credentials, not an expired session.
+  if (res.status === 401 && path !== '/auth/login') {
     clearToken();
     window.location.hash = '#/login';
     throw new ApiError(401, 'UNAUTHORIZED', 'Sessão expirada. Faça login novamente.');
   }
 
-  const data = await res.json();
+  const data = await res.json().catch(() => ({}));
 
   if (!res.ok) {
     throw new ApiError(res.status, data.code ?? 'UNKNOWN', data.message ?? 'Erro desconhecido');
@@ -56,10 +58,20 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
 
 // ── Auth ──
 
-export async function login(userId: string, tenantId: string, role: string): Promise<string> {
-  const data = await request<{ token: string }>('POST', '/auth/login', { userId, tenantId, role });
+export interface Session {
+  user: { id: string; email: string; name: string | null };
+  tenant: { id: string; name: string };
+  role: 'owner' | 'operator' | 'viewer';
+}
+
+export async function login(email: string, password: string): Promise<Session & { token: string }> {
+  const data = await request<Session & { token: string }>('POST', '/auth/login', { email, password });
   setToken(data.token);
-  return data.token;
+  return data;
+}
+
+export async function getSession(): Promise<Session> {
+  return request<Session>('GET', '/auth/me');
 }
 
 // ── Campaigns ──

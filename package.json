@@ -7,15 +7,20 @@
     "packages/*"
   ],
   "scripts": {
-    "build": "tsc -b packages/contracts packages/db && npm run build --workspaces --if-present",
-    "build:packages": "tsc -b packages/contracts packages/db",
+    "build": "npm run build --workspaces --if-present",
     "dev": "npm run dev --workspaces --if-present",
-    "lint": "npm run lint --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
-    "test": "npm run test --workspaces --if-present",
-    "test:e2e": "npm run test:e2e --workspaces --if-present"
+    "test": "tsx --test tests/e2e/*.test.ts tests/integration/*.test.mts",
+    "test:e2e": "tsx --test tests/e2e/*.test.ts",
+    "test:integration": "tsx --test tests/integration/*.test.mts",
+    "test:jev": "tsx --test tests/integration/openrouter-jev.test.ts",
+    "db:migrate": "npm run db:migrate -w @botbad/api",
+    "db:seed": "npm run db:seed -w @botbad/api"
   },
   "engines": {
     "node": ">=20"
+  },
+  "devDependencies": {
+    "tsx": "^4.23.15"
   }
 }

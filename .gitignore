@@ -9,3 +9,5 @@ coverage/
 *.tsbuildinfo
 tmp/
 .maestri/
+!.env.example
+.playwright-mcp/

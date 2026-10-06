@@ -1,5 +1,16 @@
-import { Hono } from 'hono';
+import { Hono, type Context } from 'hono';
+import { getConnInfo } from '@hono/node-server/conninfo';
 import { executePipeline } from '../decision/pipeline.js';
+import { getConfig } from '../config.js';
+
+/** Socket peer address. Under the node server this is the real TCP peer; elsewhere (tests) it is unknown. */
+function peerAddress(c: Context): string {
+  try {
+    return getConnInfo(c).remote.address ?? '';
+  } catch {
+    return '';
+  }
+}
 
 const routerRoutes = new Hono();
 
@@ -14,11 +25,14 @@ routerRoutes.get('/r/:slug', async (c) => {
     'x-real-ip': c.req.header('x-real-ip'),
   };
 
+  const config = getConfig();
   const result = await executePipeline({
     slug,
-    peerIp: c.env?.remoteAddr ?? '127.0.0.1',
+    peerIp: peerAddress(c),
     userAgent: c.req.header('user-agent') ?? '',
     headers,
+    // X-Forwarded-For is only honored when the peer is a configured proxy (e.g. Caddy).
+    trustedProxies: config.trustedProxies,
   });
 
   if (result.decision.action === 'deny') {
@@ -38,7 +52,8 @@ routerRoutes.get('/r/:slug', async (c) => {
 
   if (result.destinationUrl) {
     c.header('Cache-Control', 'private, no-store');
-    c.header('X-Decision-Id', result.decision.decisionId);
+    // Debug aid only: never tell a visitor (or a bot) which decision it got in production.
+    if (!config.isProduction) c.header('X-Decision-Id', result.decision.decisionId);
     return c.redirect(result.destinationUrl, 302);
   }
 
