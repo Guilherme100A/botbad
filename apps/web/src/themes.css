@@ -500,6 +500,168 @@
 [data-theme="soft"] .theme-fab, [data-theme="soft"] .theme-panel { background: var(--bg); border: none; box-shadow: 8px 8px 20px #121418, -8px -8px 20px #262a30; }
 
 
+/* ─────────────── 0 · Fusão (Soft + Cyberpunk + Matrix) ───────────────
+   Neumorphic relief on a green-black base, cyber type and edges, Matrix rain behind. */
+
+:root[data-theme="fusion"] {
+  color-scheme: dark;
+  --bg: #0c100e;
+  --surface: #0c100e; --surface-2: #0c100e; --surface-3: #070a08;
+  --text: #eafff2; --text-2: #9fb8aa; --text-3: #64796d; --text-4: #3a4840;
+  --hairline: rgba(0, 255, 106, 0.08); --hairline-strong: rgba(0, 255, 106, 0.22);
+  --accent: #00ff6a; --accent-rgb: 0, 255, 106; --accent-ink: #001a0b;
+  --positive: #00ff6a; --negative: #ff2a6d; --negative-soft: rgba(255, 42, 109, 0.14);
+  --caution: #00f0ff; --caution-soft: rgba(0, 240, 255, 0.12);
+  --neutral-soft: rgba(0, 255, 106, 0.05);
+  --fill-1: rgba(0, 255, 106, 0.03); --fill-2: rgba(0, 255, 106, 0.06); --fill-3: rgba(0, 255, 106, 0.1);
+  --bw: 0px;
+  --font: 'Inter', system-ui, sans-serif;
+  --font-display: 'Orbitron', 'Inter', sans-serif;
+  --radius-sm: 12px; --radius: 20px; --radius-lg: 24px; --radius-input: 14px;
+  --soft-dark: #030504; --soft-light: #1b241f;
+  --card-shadow: 8px 8px 18px var(--soft-dark), -8px -8px 18px var(--soft-light);
+  --glass-rgb: 12, 16, 14; --glass-deep-rgb: 8, 11, 9; --bg-tint: #03140a; --orb-rgb: 0, 150, 60;
+  --rain-opacity: 0.7;
+  --neon-line: linear-gradient(90deg, transparent 4%, rgba(0, 255, 106, 0.75) 25%, rgba(0, 240, 255, 0.55) 55%, rgba(255, 42, 109, 0.6) 80%, transparent 96%);
+}
+
+/* Surfaces: raised soft cards, one sharp "cyber" corner, neon edge on top */
+[data-theme="fusion"] :is(.card, .campaign-card, .list, .info-item, .sim-card, .table-wrap) {
+  background: var(--neon-line) top / 100% 1px no-repeat, rgba(12, 16, 14, 0.86);
+  border-radius: var(--radius) var(--radius) var(--radius) 6px;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+[data-theme="fusion"] .hero {
+  background:
+    var(--neon-line) top / 100% 1px no-repeat,
+    radial-gradient(120% 140% at 100% 0%, rgba(0, 255, 106, 0.09), transparent 55%),
+    radial-gradient(80% 120% at 0% 100%, rgba(255, 42, 109, 0.06), transparent 60%),
+    rgba(12, 16, 14, 0.86);
+  border-radius: var(--radius-lg) var(--radius-lg) var(--radius-lg) 8px;
+}
+[data-theme="fusion"] .campaign-card:hover { box-shadow: 10px 10px 22px var(--soft-dark), -10px -10px 22px var(--soft-light), 0 0 24px rgba(0, 255, 106, 0.08); }
+
+/* Type: cyber display, uppercase labels */
+[data-theme="fusion"] .page-title {
+  align-self: flex-start;
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-shadow: 0 0 18px rgba(0, 255, 106, 0.35);
+  animation: fusion-glitch 5s infinite;
+}
+@keyframes fusion-glitch {
+  0%, 91%, 100% { text-shadow: 0 0 18px rgba(0, 255, 106, 0.35); transform: none; }
+  92% { text-shadow: -3px 0 #ff2a6d, 3px 0 #00ff6a; transform: translateX(2px); }
+  94% { text-shadow: 3px 0 #ff2a6d, -3px 0 #00f0ff; transform: translateX(-2px) skewX(-5deg); }
+  96% { text-shadow: -1px 0 #ff2a6d, 1px 0 #00ff6a; transform: none; }
+}
+[data-theme="fusion"] :is(.section-title, .modal-title, .login-title, .theme-panel-title) {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 16px;
+}
+[data-theme="fusion"] .login-title { font-size: 22px; text-shadow: 0 0 16px rgba(0, 255, 106, 0.4); }
+[data-theme="fusion"] :is(.card-label, th, .sidebar-section-label, .info-label, .hero-eyebrow, .form-label, .badge) {
+  font-family: 'Rajdhani', 'Inter', sans-serif;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+[data-theme="fusion"] :is(.card-label, .hero-eyebrow, .info-label, .form-label) { font-size: 13px; }
+[data-theme="fusion"] .hero-value { font-weight: 700; letter-spacing: 0; text-shadow: 0 0 28px rgba(0, 255, 106, 0.3); }
+[data-theme="fusion"] :is(.card-value, .info-value-number) { font-weight: 700; letter-spacing: 0; }
+[data-theme="fusion"] .campaign-card-name { font-family: 'Rajdhani', sans-serif; font-size: 19px; font-weight: 700; letter-spacing: 0.02em; }
+
+/* Controls: soft press, neon primary */
+[data-theme="fusion"] .btn {
+  font-family: 'Rajdhani', 'Inter', sans-serif;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  border-radius: 12px 12px 12px 3px;
+}
+[data-theme="fusion"] .btn-primary {
+  box-shadow: 5px 5px 12px var(--soft-dark), -5px -5px 12px var(--soft-light), 0 0 18px rgba(0, 255, 106, 0.35);
+}
+[data-theme="fusion"] .btn-primary:hover { box-shadow: 5px 5px 12px var(--soft-dark), -5px -5px 12px var(--soft-light), 0 0 28px rgba(0, 255, 106, 0.55); }
+[data-theme="fusion"] :is(.btn-secondary, .btn-danger) {
+  background: var(--bg);
+  box-shadow: 4px 4px 10px var(--soft-dark), -4px -4px 10px var(--soft-light);
+}
+[data-theme="fusion"] .btn-secondary { color: var(--text); }
+[data-theme="fusion"] :is(.btn-secondary, .btn-danger):hover,
+[data-theme="fusion"] :is(.btn-secondary, .btn-danger):active {
+  background: var(--bg);
+  box-shadow: inset 3px 3px 7px var(--soft-dark), inset -3px -3px 7px var(--soft-light);
+}
+[data-theme="fusion"] .campaign-card-actions .btn-primary {
+  background: var(--bg);
+  color: var(--accent);
+  box-shadow: 4px 4px 10px var(--soft-dark), -4px -4px 10px var(--soft-light);
+  text-shadow: 0 0 10px rgba(0, 255, 106, 0.5);
+}
+[data-theme="fusion"] :is(input, select, textarea) {
+  background: var(--bg);
+  box-shadow: inset 4px 4px 9px var(--soft-dark), inset -4px -4px 9px var(--soft-light);
+}
+[data-theme="fusion"] :is(input, select, textarea):focus {
+  box-shadow: inset 4px 4px 9px var(--soft-dark), inset -4px -4px 9px var(--soft-light), 0 0 0 1px rgba(0, 255, 106, 0.45), 0 0 18px rgba(0, 255, 106, 0.2);
+}
+
+/* Data: sunken tracks, glowing fills */
+[data-theme="fusion"] .progress-bar {
+  height: 10px;
+  border-radius: 5px;
+  background: var(--bg);
+  box-shadow: inset 3px 3px 6px var(--soft-dark), inset -3px -3px 6px var(--soft-light);
+}
+[data-theme="fusion"] .progress-fill {
+  background: linear-gradient(90deg, #00ff6a, #00f0ff);
+  box-shadow: 0 0 12px rgba(0, 255, 106, 0.6);
+}
+[data-theme="fusion"] .split-bar { height: 10px; gap: 4px; }
+[data-theme="fusion"] .split-bar > span { filter: drop-shadow(0 0 6px currentColor); }
+[data-theme="fusion"] .split-bar > .c-primary { color: #00ff6a; }
+[data-theme="fusion"] .split-bar > .c-alt { color: #ff2a6d; }
+[data-theme="fusion"] .split-bar > .c-challenge { color: #00f0ff; }
+[data-theme="fusion"] .badge { border: 1px solid currentColor; border-color: color-mix(in srgb, currentColor 35%, transparent); }
+
+/* Chrome */
+[data-theme="fusion"] .sidebar { background: rgba(10, 14, 12, 0.88); border-right: none; box-shadow: 6px 0 24px var(--soft-dark); }
+[data-theme="fusion"] .sidebar-link.active {
+  background: var(--bg);
+  box-shadow: inset 3px 3px 7px var(--soft-dark), inset -3px -3px 7px var(--soft-light);
+}
+[data-theme="fusion"] .sidebar-logo-icon { border-radius: 8px 8px 8px 2px; box-shadow: 3px 3px 8px var(--soft-dark), -3px -3px 8px var(--soft-light), 0 0 18px rgba(0, 255, 106, 0.4); }
+[data-theme="fusion"] .sidebar-logo-text { font-family: 'Orbitron', sans-serif; font-size: 14px; letter-spacing: 0.06em; text-transform: uppercase; }
+[data-theme="fusion"] .sidebar-avatar { background: var(--bg); border: none; box-shadow: 3px 3px 7px var(--soft-dark), -3px -3px 7px var(--soft-light); color: var(--accent); }
+[data-theme="fusion"] .login-card {
+  background: var(--neon-line) top / 100% 1px no-repeat, rgba(12, 16, 14, 0.9);
+  border: none;
+  border-radius: 26px 26px 26px 8px;
+  box-shadow: 14px 14px 32px var(--soft-dark), -14px -14px 32px var(--soft-light);
+}
+[data-theme="fusion"] .modal { background: var(--bg); border: none; box-shadow: 16px 16px 40px var(--soft-dark), -10px -10px 30px var(--soft-light); }
+[data-theme="fusion"] .theme-fab {
+  background: var(--bg);
+  border: none;
+  box-shadow: 6px 6px 14px var(--soft-dark), -6px -6px 14px var(--soft-light), 0 0 20px rgba(0, 255, 106, 0.25);
+}
+[data-theme="fusion"] .theme-panel { background: rgba(12, 16, 14, 0.92); border: none; box-shadow: 14px 14px 36px var(--soft-dark), -10px -10px 30px var(--soft-light); }
+
+/* Background: Matrix rain + green/magenta glow + faint cyber scanlines */
+[data-theme="fusion"] .bg-orb-b { background: radial-gradient(circle, rgba(255, 42, 109, 0.12), transparent 62%); }
+[data-theme="fusion"] .bg-grid { opacity: 0.6; }
+[data-theme="fusion"] .bg-scan {
+  display: block;
+  position: absolute; inset: 0;
+  background: repeating-linear-gradient(180deg, rgba(0, 0, 0, 0.16) 0 1px, transparent 1px 4px);
+}
+
+
 /* ══ Picker miniatures ══
    Each is a hand-built thumbnail so it renders the same regardless of the active style. */
 
@@ -525,6 +687,25 @@
 .pv-btn { position: absolute; right: 8px; bottom: 8px; width: 26px; height: 9px; }
 
 .theme-option.selected .pv { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* Fusão */
+.pv-fusion { background: #0c100e; }
+.pv-fusion .pv-fx {
+  background:
+    radial-gradient(70% 90% at 100% 0%, rgba(0, 255, 106, 0.22), transparent 60%),
+    radial-gradient(60% 80% at 0% 100%, rgba(255, 42, 109, 0.18), transparent 60%),
+    repeating-linear-gradient(90deg, transparent 0 9px, rgba(0, 255, 106, 0.22) 9px 10px, transparent 10px 23px);
+}
+.pv-fusion .pv-card {
+  background: linear-gradient(90deg, transparent 5%, #00ff6a 30%, #00f0ff 60%, #ff2a6d 85%, transparent 95%) top / 100% 1px no-repeat, #0c100e;
+  border-radius: 10px 10px 10px 3px;
+  box-shadow: 4px 4px 9px #050706, -4px -4px 9px #151c18;
+  color: #eafff2;
+  font-family: 'Orbitron', sans-serif;
+}
+.pv-fusion .pv-title { font-family: 'Rajdhani', sans-serif; text-transform: uppercase; letter-spacing: 0.12em; font-weight: 600; }
+.pv-fusion .pv-num { font-size: 13px; text-shadow: -1px 0 #ff2a6d, 1px 0 #00ff6a, 0 0 8px rgba(0, 255, 106, 0.5); }
+.pv-fusion .pv-btn { background: #00ff6a; border-radius: 6px 6px 6px 2px; box-shadow: 0 0 9px #00ff6a; }
 
 /* Matrix */
 .pv-matrix { background: #000; }

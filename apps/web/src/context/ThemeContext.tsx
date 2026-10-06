@@ -22,6 +22,10 @@ export interface Theme {
 /** Visual styles. Colors, type, shape and background effects live in themes.css under [data-theme]. */
 export const THEMES: Theme[] = [
   {
+    id: 'fusion', name: 'Fusão', desc: 'Soft + Cyberpunk + Matrix', meta: '#0c100e',
+    rain: { color: '#14b04e', head: '#ff2a6d', glow: 12, density: 0.55, interval: 70 },
+  },
+  {
     id: 'matrix', name: 'Matrix', desc: 'Vidro escuro e chuva neon', meta: '#000000',
     rain: { color: '#14b04e', head: '#7dffb0', glow: 14, density: 0.65, interval: 70 },
   },
@@ -42,7 +46,8 @@ export const THEMES: Theme[] = [
   { id: 'soft', name: 'Soft', desc: 'Neumorfismo escuro', meta: '#1c1f24' },
 ];
 
-const KEY = 'jev_theme';
+// v2: new default (Fusão) shows up even for browsers that saved a previous pick.
+const KEY = 'jev_theme_v2';
 const DEFAULT = THEMES[0]!;
 
 function load(): Theme {
