@@ -55,7 +55,7 @@ export function Traffic() {
   }, []);
 
   if (loading) {
-    return <div className="loading"><div className="spinner" />Carregando decisões...</div>;
+    return <div className="loading"><div className="spinner" />Carregando decisoes...</div>;
   }
 
   const recent = events.slice(0, 15);
@@ -63,57 +63,59 @@ export function Traffic() {
   if (recent.length === 0) {
     return (
       <div className="empty-state">
-        <div className="empty-state-icon">&#8644;</div>
-        <div className="empty-state-title">Nenhuma decisão recente</div>
-        <p>As decisões de roteamento aparecerão aqui.</p>
+        <div className="empty-state-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/>
+          </svg>
+        </div>
+        <div className="empty-state-title">Nenhuma decisao recente</div>
+        <div className="empty-state-desc">As decisoes de roteamento aparecerao aqui.</div>
       </div>
     );
   }
 
   return (
-    <>
-      <div className="section">
-        <h2 className="section-title">Decisões recentes</h2>
-        <div className="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Hora</th>
-                <th>Campanha</th>
-                <th>Ação</th>
-                <th>Destino</th>
-                <th>Origem</th>
-                <th>Motivo</th>
-                <th>Duração</th>
-              </tr>
-            </thead>
-            <tbody>
-              {recent.map(ev => {
-                const campaign = getCampaignById(campaigns, ev.campaignId);
-                const dest = getDestination(destinations, ev.destinationId);
-                const time = new Date(ev.timestamp);
-                const timeStr = time.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    <div className="section">
+      <h2 className="section-title">Decisoes recentes</h2>
+      <div className="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Hora</th>
+              <th>Campanha</th>
+              <th>Acao</th>
+              <th>Destino</th>
+              <th>Origem</th>
+              <th>Motivo</th>
+              <th>Duracao</th>
+            </tr>
+          </thead>
+          <tbody>
+            {recent.map(ev => {
+              const campaign = getCampaignById(campaigns, ev.campaignId);
+              const dest = getDestination(destinations, ev.destinationId);
+              const time = new Date(ev.timestamp);
+              const timeStr = time.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
-                return (
-                  <tr key={ev.id}>
-                    <td style={{ fontFamily: 'monospace', fontSize: 13 }}>{timeStr}</td>
-                    <td>{campaign?.name ?? '—'}</td>
-                    <td><span className={`badge badge-${ev.action}`}>{ACTION_LABELS[ev.action]}</span></td>
-                    <td style={{ fontSize: 13, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {dest?.url ?? '—'}
-                    </td>
-                    <td>{SOURCE_LABELS[ev.source]}</td>
-                    <td style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-                      {REASON_LABELS[ev.reasonCode] ?? ev.reasonCode}
-                    </td>
-                    <td style={{ fontFamily: 'monospace', fontSize: 13 }}>{ev.durationMs}ms</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+              return (
+                <tr key={ev.id}>
+                  <td style={{ fontFamily: 'monospace', fontSize: 12 }}>{timeStr}</td>
+                  <td style={{ fontSize: 13 }}>{campaign?.name ?? '—'}</td>
+                  <td><span className={`badge badge-${ev.action}`}>{ACTION_LABELS[ev.action]}</span></td>
+                  <td style={{ fontSize: 12, maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {dest?.url ?? '—'}
+                  </td>
+                  <td style={{ fontSize: 12 }}>{SOURCE_LABELS[ev.source]}</td>
+                  <td style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
+                    {REASON_LABELS[ev.reasonCode] ?? ev.reasonCode}
+                  </td>
+                  <td style={{ fontFamily: 'monospace', fontSize: 12 }}>{ev.durationMs}ms</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
       </div>
-    </>
+    </div>
   );
 }

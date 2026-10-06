@@ -11,8 +11,8 @@ export function Login() {
     e.preventDefault();
     setError('');
 
-    if (!email.trim()) { setError('Email é obrigatório.'); return; }
-    if (!password) { setError('Senha é obrigatória.'); return; }
+    if (!email.trim()) { setError('Email e obrigatorio.'); return; }
+    if (!password) { setError('Senha e obrigatoria.'); return; }
 
     try {
       await login(email, password);
@@ -26,10 +26,12 @@ export function Login() {
     <div className="login-page">
       <div className="login-card">
         <div className="login-logo">
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-          </svg>
-          <span>JEV Traffic Router</span>
+          <div className="sidebar-logo-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            </svg>
+          </div>
+          <span>JEV Router</span>
         </div>
 
         <form onSubmit={handleSubmit}>
@@ -60,7 +62,7 @@ export function Login() {
             />
           </div>
 
-          <button className="btn btn-primary" type="submit" disabled={loading} style={{ width: '100%', marginTop: 8 }}>
+          <button className="btn btn-primary" type="submit" disabled={loading} style={{ width: '100%', marginTop: 4 }}>
             {loading ? 'Entrando...' : 'Entrar'}
           </button>
 

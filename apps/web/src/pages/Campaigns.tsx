@@ -63,7 +63,7 @@ export function Campaigns() {
   async function handleCreate() {
     setFormError('');
 
-    if (!formName.trim()) { setFormError('Nome é obrigatório.'); return; }
+    if (!formName.trim()) { setFormError('Nome e obrigatorio.'); return; }
     if (!formPrimaryUrl.startsWith('https://')) { setFormError('Destino principal deve usar HTTPS.'); return; }
     if (!formAltUrl.startsWith('https://')) { setFormError('Destino alternativo deve usar HTTPS.'); return; }
     if (formPrimaryUrl === formAltUrl) { setFormError('Os destinos devem ser distintos.'); return; }
@@ -166,10 +166,15 @@ export function Campaigns() {
   if (campaigns.length === 0 && !showCreate) {
     return (
       <div className="empty-state">
-        <div className="empty-state-icon">&#9776;</div>
+        <div className="empty-state-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+          </svg>
+        </div>
         <div className="empty-state-title">Nenhuma campanha</div>
-        <p>Crie sua primeira campanha para começar a rotear tráfego.</p>
-        <button className="btn btn-primary" style={{ marginTop: 20 }} onClick={() => setShowCreate(true)}>+ Criar campanha</button>
+        <div className="empty-state-desc">Crie sua primeira campanha para comecar a rotear trafego de forma inteligente.</div>
+        <button className="btn btn-primary" onClick={() => setShowCreate(true)}>+ Criar primeira campanha</button>
       </div>
     );
   }
@@ -178,65 +183,54 @@ export function Campaigns() {
     <>
       <div className="section-header">
         <h2 className="section-title" style={{ margin: 0 }}>Campanhas ({campaigns.length})</h2>
-        <button className="btn btn-primary btn-sm" onClick={() => setShowCreate(true)}>+ Criar campanha</button>
+        <button className="btn btn-primary btn-sm" onClick={() => setShowCreate(true)}>+ Nova campanha</button>
       </div>
 
-      <div className="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Nome</th>
-              <th>Status</th>
-              <th>Origem</th>
-              <th>Slug</th>
-              <th>Ações</th>
-            </tr>
-          </thead>
-          <tbody>
-            {campaigns.map(c => {
-              const primaryDest = getDestination(destinations, c.primaryDestinationId);
-              const altDest = getDestination(destinations, c.alternativeDestinationId);
-              const isExpanded = simulating === c.id;
-              const isLoading = actionLoading === c.id;
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 12 }}>
+        {campaigns.map(c => {
+          const isExpanded = simulating === c.id;
+          const isLoading = actionLoading === c.id;
 
-              return (
-                <tr key={c.id} style={{ verticalAlign: 'top' }}>
-                  <td>
-                    <div style={{ fontWeight: 600 }}>{c.name}</div>
-                    <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
-                      {primaryDest?.url ?? '—'} → {altDest?.url ?? '—'}
-                    </div>
-                  </td>
-                  <td><span className={`badge badge-${c.status}`}>{STATUS_LABELS[c.status]}</span></td>
-                  <td>{NETWORK_PROFILE_LABELS[c.networkProfile]}</td>
-                  <td style={{ fontFamily: 'monospace', fontSize: 13 }}>/r/{c.slug}</td>
-                  <td>
-                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                      <button
-                        className="btn btn-secondary btn-sm"
-                        onClick={() => setSimulating(isExpanded ? null : c.id)}
-                      >
-                        {isExpanded ? 'Fechar' : 'Simular'}
-                      </button>
-                      {c.status !== 'archived' && (
-                        <button
-                          className={`btn btn-sm ${c.status === 'active' ? 'btn-danger' : 'btn-primary'}`}
-                          onClick={() => toggleStatus(c.id)}
-                          disabled={isLoading}
-                        >
-                          {isLoading ? '...' : c.status === 'active' ? 'Pausar' : 'Ativar'}
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+          return (
+            <div className="campaign-card" key={c.id}>
+              <div className="campaign-card-header">
+                <span className="campaign-card-name">{c.name}</span>
+                <span className={`badge badge-${c.status}`}>{STATUS_LABELS[c.status]}</span>
+              </div>
+              <div className="campaign-card-meta">
+                <span>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+                  {NETWORK_PROFILE_LABELS[c.networkProfile]}
+                </span>
+                <span>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                  /r/{c.slug}
+                </span>
+              </div>
+              <div className="campaign-card-actions">
+                <button
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => setSimulating(isExpanded ? null : c.id)}
+                  style={{ flex: 1 }}
+                >
+                  {isExpanded ? 'Fechar' : 'Simular'}
+                </button>
+                {c.status !== 'archived' && (
+                  <button
+                    className={`btn btn-sm ${c.status === 'active' ? 'btn-danger' : 'btn-primary'}`}
+                    onClick={() => toggleStatus(c.id)}
+                    disabled={isLoading}
+                    style={{ flex: 1 }}
+                  >
+                    {isLoading ? '...' : c.status === 'active' ? 'Pausar' : 'Ativar'}
+                  </button>
+                )}
+              </div>
+            </div>
+          );
+        })}
       </div>
 
-      {/* Simulation panel */}
       {simulating && (() => {
         const campaign = campaigns.find(c => c.id === simulating);
         if (!campaign) return null;
@@ -245,9 +239,9 @@ export function Campaigns() {
 
         return (
           <div className="section" style={{ marginTop: 24 }}>
-            <h3 className="section-title">Simulação — {campaign.name}</h3>
-            <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 16 }}>
-              Resultados de fixture identificados como dados demonstrativos. Não representam decisões reais do Jev.
+            <h3 className="section-title">Simulacao — {campaign.name}</h3>
+            <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 14 }}>
+              Resultados de fixture identificados como dados demonstrativos. Nao representam decisoes reais do Jev.
             </p>
             {SIMULATION_SCENARIOS.map(sc => {
               const dest = sc.expectedAction === 'route_primary' ? primaryDest : altDest;
@@ -264,7 +258,7 @@ export function Campaigns() {
                     <strong>Origem:</strong> {SOURCE_LABELS[sc.expectedSource]} &middot;{' '}
                     <strong>Motivo:</strong> {REASON_LABELS[sc.expectedReasonCode]}<br />
                     {dest && <><strong>Destino:</strong> {dest.url}</>}
-                    {sc.expectedAssessment && <><br /><strong>Classificação:</strong> {sc.expectedAssessment}</>}
+                    {sc.expectedAssessment && <><br /><strong>Classificacao:</strong> {sc.expectedAssessment}</>}
                   </div>
                 </div>
               );
@@ -273,23 +267,22 @@ export function Campaigns() {
         );
       })()}
 
-      {/* Create campaign modal */}
       {showCreate && (
         <div className="overlay" onClick={() => setShowCreate(false)}>
           <div className="modal" onClick={e => e.stopPropagation()}>
-            <h3 className="modal-title">Criar campanha</h3>
-            <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 24 }}>
-              Clientes prováveis recebem a página principal. Bots identificados e automação provável recebem a página alternativa.
+            <h3 className="modal-title">Nova campanha</h3>
+            <p className="modal-desc">
+              Visitantes humanos recebem a pagina principal. Bots e automacao recebem a alternativa.
             </p>
 
-            {formError && <div className="error-box" style={{ marginBottom: 20 }}>{formError}</div>}
+            {formError && <div className="error-box">{formError}</div>}
 
             <div className="form-group">
               <label className="form-label">Nome da campanha</label>
               <input
                 value={formName}
                 onChange={e => setFormName(e.target.value)}
-                placeholder="Ex: Oferta de Verão"
+                placeholder="Ex: Oferta de Verao"
               />
             </div>
 
@@ -300,7 +293,7 @@ export function Campaigns() {
                 onChange={e => setFormPrimaryUrl(e.target.value)}
                 placeholder="https://exemplo.com/landing"
               />
-              <div className="form-hint">Página mostrada a clientes prováveis.</div>
+              <div className="form-hint">Pagina mostrada a clientes provaveis.</div>
             </div>
 
             <div className="form-group">
@@ -310,7 +303,7 @@ export function Campaigns() {
                 onChange={e => setFormAltUrl(e.target.value)}
                 placeholder="https://exemplo.com/alt"
               />
-              <div className="form-hint">Página mostrada a bots e automação.</div>
+              <div className="form-hint">Pagina mostrada a bots e automacao.</div>
             </div>
 
             <button
@@ -318,7 +311,7 @@ export function Campaigns() {
               onClick={() => setShowAdvanced(v => !v)}
               type="button"
             >
-              {showAdvanced ? '▾' : '▸'} Opções avançadas
+              {showAdvanced ? '▾' : '▸'} Opcoes avancadas
             </button>
 
             {showAdvanced && (
@@ -332,7 +325,7 @@ export function Campaigns() {
                     <option key={k} value={k}>{v}</option>
                   ))}
                 </select>
-                <div className="form-hint">Contexto para relatórios. Não prova de onde o visitante veio.</div>
+                <div className="form-hint">Contexto para relatorios. Nao prova de onde o visitante veio.</div>
               </div>
             )}
 
