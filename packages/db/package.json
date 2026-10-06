@@ -11,13 +11,13 @@
     "push": "drizzle-kit push"
   },
   "dependencies": {
-    "@botbad/contracts": "workspace:*",
-    "drizzle-orm": "*",
-    "pg": "*"
+    "@botbad/contracts": "*",
+    "drizzle-orm": "^0.35.0",
+    "pg": "^8.13.0"
   },
   "devDependencies": {
-    "@types/pg": "*",
-    "drizzle-kit": "*",
-    "typescript": "*"
+    "@types/pg": "^8.11.0",
+    "drizzle-kit": "^0.27.0",
+    "typescript": "^5.5.0"
   }
 }
