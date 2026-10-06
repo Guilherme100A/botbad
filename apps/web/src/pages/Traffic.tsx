@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import type { Campaign, Destination, DecisionEvent } from '@botbad/contracts';
-import { listCampaigns, listDestinations, listCampaignEvents } from '../api/client.js';
+import { listCampaigns, listDestinations, listEvents } from '../api/client.js';
+import { DemoBadge } from '../components/DemoBadge.js';
 import {
   decisionEvents,
   initialCampaigns,
@@ -15,6 +16,7 @@ import {
 export function Traffic() {
   const [loading, setLoading] = useState(true);
   const [events, setEvents] = useState<DecisionEvent[]>([]);
+  const [demo, setDemo] = useState(false);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [destinations, setDestinations] = useState<Destination[]>([]);
 
@@ -26,26 +28,15 @@ export function Traffic() {
         if (cancelled) return;
         setCampaigns(c);
         setDestinations(d);
-        const allEvents: DecisionEvent[] = [];
-        for (const campaign of c) {
-          try {
-            const ev = await listCampaignEvents(campaign.id);
-            allEvents.push(...ev);
-          } catch { /* endpoint may not exist yet */ }
-        }
-        if (!cancelled) {
-          if (allEvents.length > 0) {
-            allEvents.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
-            setEvents(allEvents);
-          } else {
-            setEvents(decisionEvents);
-          }
-        }
+        const ev = await listEvents(100);
+        if (!cancelled) setEvents(ev);
       } catch {
+        // API unreachable: show the demo fixture, labeled as such (never mixed with real data).
         if (!cancelled) {
           setCampaigns(initialCampaigns);
           setDestinations(initialDestinations);
           setEvents(decisionEvents);
+          setDemo(true);
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -76,6 +67,7 @@ export function Traffic() {
 
   return (
     <div className="section">
+      <DemoBadge show={demo} />
       <h2 className="section-title">Decisões recentes</h2>
       <div className="table-wrap">
         <table>

@@ -275,3 +275,40 @@ export const STATUS_LABELS: Record<CampaignStatus, string> = {
   paused: 'Pausada',
   archived: 'Arquivada',
 };
+
+// ── Demo fixtures in the API's shapes (shown only when the API is unreachable, with a DemoBadge) ──
+
+export const DEMO_METRICS = {
+  days: 30,
+  totalAccesses: dashboardStats.totalAccesses,
+  routePrimary: dashboardStats.routePrimary,
+  routeAlternative: dashboardStats.routeAlternative,
+  challenge: dashboardStats.challenge,
+  deny: dashboardStats.deny,
+  latencyP95Ms: dashboardStats.latencyP95Ms,
+  decisionSources: dashboardStats.decisionSources,
+};
+
+export const DEMO_ENGINE = {
+  adapter: 'mock' as const,
+  model: engineStatus.model,
+  healthy: engineStatus.healthy,
+  circuit: 'closed' as const,
+  mode: engineStatus.mode,
+  policyVersion: engineStatus.policyVersion,
+  profileVersion: engineStatus.profileVersion,
+  timeoutMs: 600,
+  thresholds: { primary: 0.75, automation: 0.6, maxAutomationForPrimary: 0.3 },
+  budget: { usedToday: 12000, usedMonth: engineStatus.budgetUsedTokens, dailyLimit: 50_000_000, monthlyLimit: engineStatus.budgetLimitTokens },
+  checkedAt: engineStatus.lastHealthCheck,
+};
+
+export const DEMO_TENANT = {
+  tenant: { id: tenantSettings.tenant.id, name: tenantSettings.tenant.name, createdAt: tenantSettings.tenant.createdAt },
+  members: [
+    { id: uid('m0000001', 1), userId: uid('u0000001', 1), email: 'dono@exemplo.com', name: 'Dono', role: 'owner' as const, createdAt: NOW },
+    { id: uid('m0000001', 2), userId: uid('u0000001', 2), email: 'operador@exemplo.com', name: null, role: 'operator' as const, createdAt: NOW },
+    { id: uid('m0000001', 3), userId: uid('u0000001', 3), email: 'leitura@exemplo.com', name: null, role: 'viewer' as const, createdAt: NOW },
+  ],
+  limits: { requestsPerDay: 50_000, requestsPerMonth: 1_000_000, requestsPerMinutePerVisitor: 120, jevTokensPerDay: 50_000_000, jevTokensPerMonth: 500_000_000 },
+};

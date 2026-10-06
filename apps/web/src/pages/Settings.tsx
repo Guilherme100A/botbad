@@ -1,4 +1,7 @@
-import { tenantSettings } from '../mock/data.js';
+import { getTenant } from '../api/client.js';
+import { DEMO_TENANT } from '../mock/data.js';
+import { useApiData } from '../hooks/useApiData.js';
+import { DemoBadge } from '../components/DemoBadge.js';
 
 const ROLE_LABELS: Record<string, string> = {
   owner: 'Proprietário',
@@ -7,10 +10,19 @@ const ROLE_LABELS: Record<string, string> = {
 };
 
 export function Settings() {
-  const { tenant, members, limits } = tenantSettings;
+  const { data, demo, loading } = useApiData(getTenant, DEMO_TENANT);
+
+  if (loading) {
+    return <div className="loading"><div className="spinner" />Carregando configurações…</div>;
+  }
+
+  const { tenant, members, limits } = data;
+  const n = (v: number) => v.toLocaleString('pt-BR');
 
   return (
     <>
+      <DemoBadge show={demo} />
+
       <div className="section">
         <h2 className="section-title">Organização</h2>
         <div className="info-grid">
@@ -43,7 +55,7 @@ export function Settings() {
             <tbody>
               {members.map(m => (
                 <tr key={m.id}>
-                  <td className="mono">{m.userId.slice(0, 8)}...</td>
+                  <td>{m.name ? <>{m.name} <span className="dim">· {m.email}</span></> : m.email}</td>
                   <td><span className={`badge badge-${m.role === 'owner' ? 'active' : m.role === 'operator' ? 'paused' : 'draft'}`}>{ROLE_LABELS[m.role] ?? m.role}</span></td>
                   <td className="dim">{new Date(m.createdAt).toLocaleDateString('pt-BR')}</td>
                 </tr>
@@ -57,20 +69,20 @@ export function Settings() {
         <h2 className="section-title">Limites</h2>
         <div className="info-grid">
           <div className="info-item">
-            <div className="info-label">Campanhas máximas</div>
-            <div className="info-value info-value-number">{limits.maxCampaigns}</div>
+            <div className="info-label">Acessos por dia</div>
+            <div className="info-value info-value-number">{n(limits.requestsPerDay)}</div>
           </div>
           <div className="info-item">
-            <div className="info-label">Destinos máximos</div>
-            <div className="info-value info-value-number">{limits.maxDestinations}</div>
+            <div className="info-label">Acessos por mês</div>
+            <div className="info-value info-value-number">{n(limits.requestsPerMonth)}</div>
           </div>
           <div className="info-item">
-            <div className="info-label">Req/minuto</div>
-            <div className="info-value info-value-number">{limits.maxRequestsPerMinute.toLocaleString('pt-BR')}</div>
+            <div className="info-label">Por visitante (req/min)</div>
+            <div className="info-value info-value-number">{n(limits.requestsPerMinutePerVisitor)}</div>
           </div>
           <div className="info-item">
-            <div className="info-label">Orçamento diário Jev</div>
-            <div className="info-value info-value-number">{limits.jevBudgetDailyTokens.toLocaleString('pt-BR')} tokens</div>
+            <div className="info-label">Orçamento Jev por dia</div>
+            <div className="info-value info-value-number">{n(limits.jevTokensPerDay)} tokens</div>
           </div>
         </div>
       </div>

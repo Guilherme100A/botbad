@@ -1,6 +1,8 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { useAuth } from '../context/AuthContext.js';
-import { engineStatus } from '../mock/data.js';
+import { DEMO_ENGINE } from '../mock/data.js';
+import { getEngineStatus } from '../api/client.js';
+import { useApiData } from '../hooks/useApiData.js';
 import { MatrixRain } from './MatrixRain.js';
 import { HxLogo } from './HxLogo.js';
 import { useTheme } from '../context/ThemeContext.js';
@@ -139,7 +141,9 @@ export function Layout({ route, children }: LayoutProps) {
   const { logout, session } = useAuth();
   const displayName = session?.user.name || session?.user.email || 'Operador';
   const roleLabel = session ? ROLE_LABELS[session.role] : '';
-  const healthy = engineStatus.healthy;
+  const engine = useApiData(getEngineStatus, DEMO_ENGINE);
+  // Unknown is not healthy: never claim the engine is up when the API didn't answer.
+  const health = engine.loading || engine.demo ? 'unknown' : engine.data.healthy ? 'ok' : 'err';
 
   // Cursor-following glow on surfaces: one listener, CSS does the rest.
   useEffect(() => {
@@ -182,8 +186,8 @@ export function Layout({ route, children }: LayoutProps) {
             </div>
           </div>
           <div className="sidebar-status">
-            <span className={`sidebar-status-dot ${healthy ? 'ok' : 'err'}`} />
-            Motor {healthy ? 'operacional' : 'indisponível'}
+            <span className={`sidebar-status-dot ${health === 'ok' ? 'ok' : health === 'err' ? 'err' : ''}`} />
+            Motor {health === 'ok' ? 'operacional' : health === 'err' ? 'indisponível' : 'com status desconhecido'}
             <span className="num">v0.1</span>
           </div>
         </div>

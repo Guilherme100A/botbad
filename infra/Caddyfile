@@ -4,7 +4,7 @@
 
 	# API + router. Caddy replaces any client-sent X-Forwarded-For with the real peer,
 	# and the API trusts that header only from this container (TRUSTED_PROXIES).
-	@api path /r/* /auth/* /campaigns /campaigns/* /destinations /destinations/* /health
+	@api path /r/* /auth/* /campaigns /campaigns/* /destinations /destinations/* /events /events/* /engine/* /metrics/* /tenant /health
 	handle @api {
 		reverse_proxy api:3000
 	}

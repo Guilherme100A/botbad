@@ -278,6 +278,53 @@ describe('API + Postgres', { skip }, () => {
     });
   });
 
+  describe('panel views', () => {
+    let token: string;
+    before(async () => { token = await loginAs(ADMIN.email, ADMIN.password); });
+
+    it('metrics count the real decisions of this tenant only', async () => {
+      const r = await call('GET', '/metrics/summary?days=7', { token });
+      assert.equal(r.status, 200);
+      assert.ok(r.json.totalAccesses >= 1);
+      assert.ok(r.json.routePrimary >= 1);
+      assert.equal(typeof r.json.latencyP95Ms, 'number');
+      const other = await loginAs('other@test.local', 'pw-other-123');
+      const o = await call('GET', '/metrics/summary', { token: other });
+      assert.equal(o.json.totalAccesses, 0);
+    });
+
+    it('tenant-wide events are isolated', async () => {
+      const mine = await call('GET', '/events?limit=5', { token });
+      assert.equal(mine.status, 200);
+      assert.ok(mine.json.items.length >= 1);
+      const other = await loginAs('other@test.local', 'pw-other-123');
+      assert.equal((await call('GET', '/events', { token: other })).json.items.length, 0);
+    });
+
+    it('engine status reports adapter, health and budget', async () => {
+      const r = await call('GET', '/engine/status', { token });
+      assert.equal(r.status, 200);
+      assert.equal(r.json.adapter, 'mock');
+      assert.equal(r.json.healthy, true);
+      assert.ok(r.json.budget.usedMonth >= 1000);
+    });
+
+    it('tenant view lists members with their roles', async () => {
+      const r = await call('GET', '/tenant', { token });
+      assert.equal(r.status, 200);
+      const roles = Object.fromEntries(r.json.members.map((m: any) => [m.email, m.role]));
+      assert.equal(roles[ADMIN.email], 'owner');
+      assert.equal(roles['viewer@test.local'], 'viewer');
+      assert.ok(!('passwordHash' in r.json.members[0]));
+    });
+
+    it('panel views require a session', async () => {
+      for (const p of ['/metrics/summary', '/events', '/engine/status', '/tenant']) {
+        assert.equal((await call('GET', p)).status, 401, p);
+      }
+    });
+  });
+
   describe('CORS', () => {
     it('does not allow arbitrary origins', async () => {
       const r = await call('GET', '/health', { headers: { Origin: 'https://evil.example' } });

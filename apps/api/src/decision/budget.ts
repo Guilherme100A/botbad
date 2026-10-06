@@ -2,13 +2,13 @@ import { eq, sql } from 'drizzle-orm';
 import { budgetReservations } from '@botbad/db';
 import { getDb } from '../db.js';
 
-interface BudgetConfig {
+export interface BudgetConfig {
   dailyTokenLimit: number;
   monthlyTokenLimit: number;
   reservationSize: number;
 }
 
-const DEFAULT_CONFIG: BudgetConfig = {
+export const DEFAULT_BUDGET: BudgetConfig = {
   dailyTokenLimit: 50_000_000,
   monthlyTokenLimit: 500_000_000,
   reservationSize: 1000,
@@ -40,7 +40,7 @@ function checkAlerts(tenantId: string, used: number, limit: number, scope: 'dail
 
 export async function reserveBudget(
   tenantId: string,
-  config: BudgetConfig = DEFAULT_CONFIG,
+  config: BudgetConfig = DEFAULT_BUDGET,
 ): Promise<{ reserved: boolean; reservationId?: string; reason?: string }> {
   const db = getDb();
 

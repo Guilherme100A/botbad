@@ -127,6 +127,63 @@ export async function listCampaignEvents(campaignId: string): Promise<DecisionEv
   return data.items;
 }
 
+/** Every decision of the tenant, newest first (one call instead of one per campaign). */
+export async function listEvents(limit = 100): Promise<DecisionEvent[]> {
+  const data = await request<{ items: DecisionEvent[] }>('GET', `/events?limit=${limit}`);
+  return data.items;
+}
+
+// ── Panel views ──
+
+export interface MetricsSummary {
+  days: number;
+  totalAccesses: number;
+  routePrimary: number;
+  routeAlternative: number;
+  challenge: number;
+  deny: number;
+  latencyP95Ms: number | null;
+  decisionSources: { rule: number; cache: number; jev: number; fallback: number };
+}
+
+export async function getMetricsSummary(days = 30): Promise<MetricsSummary> {
+  return request<MetricsSummary>('GET', `/metrics/summary?days=${days}`);
+}
+
+export interface EngineStatus {
+  adapter: 'real' | 'openrouter' | 'mock';
+  model: string;
+  healthy: boolean;
+  circuit: 'closed' | 'open' | 'half-open';
+  mode: 'active' | 'shadow';
+  policyVersion: string;
+  profileVersion: string;
+  timeoutMs: number;
+  thresholds: { primary: number; automation: number; maxAutomationForPrimary: number };
+  budget: { usedToday: number; usedMonth: number; dailyLimit: number; monthlyLimit: number };
+  checkedAt: string;
+}
+
+export async function getEngineStatus(): Promise<EngineStatus> {
+  return request<EngineStatus>('GET', '/engine/status');
+}
+
+export interface TenantView {
+  tenant: { id: string; name: string; createdAt: string };
+  members: { id: string; userId: string; email: string; name: string | null; role: 'owner' | 'operator' | 'viewer'; createdAt: string }[];
+  limits: {
+    requestsPerDay: number;
+    requestsPerMonth: number;
+    requestsPerMinutePerVisitor: number;
+    jevTokensPerDay: number;
+    jevTokensPerMonth: number;
+  };
+}
+
+export async function getTenant(): Promise<TenantView> {
+  return request<TenantView>('GET', '/tenant');
+}
+
 // ── Health check (non-authenticated) ──
 
 export async function isApiAvailable(): Promise<boolean> {

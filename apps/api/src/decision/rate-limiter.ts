@@ -8,7 +8,7 @@ interface RateLimitConfig {
   maxPerMonth: number;
 }
 
-const DEFAULT_TENANT_LIMITS: RateLimitConfig = {
+export const DEFAULT_TENANT_LIMITS: RateLimitConfig = {
   maxPerDay: 50_000,
   maxPerMonth: 1_000_000,
 };

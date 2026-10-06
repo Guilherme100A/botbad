@@ -7,6 +7,7 @@ import { destinationRoutes } from './routes/destinations.js';
 import { eventRoutes } from './routes/events.js';
 import { simulateRoutes } from './decision/simulate.js';
 import { routerRoutes } from './routes/router.js';
+import { engineRoutes, metricsRoutes, tenantEventRoutes, tenantRoutes } from './routes/insights.js';
 
 const app = new Hono();
 
@@ -28,6 +29,10 @@ app.route('/campaigns', campaignRoutes);
 app.route('/campaigns', eventRoutes);
 app.route('/campaigns', simulateRoutes);
 app.route('/destinations', destinationRoutes);
+app.route('/events', tenantEventRoutes);
+app.route('/engine', engineRoutes);
+app.route('/metrics', metricsRoutes);
+app.route('/tenant', tenantRoutes);
 app.route('/', routerRoutes);
 
 export default app;

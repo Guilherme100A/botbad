@@ -1248,3 +1248,22 @@ tbody tr:nth-child(n+11) td { animation-delay: 0.55s; }
 @media (max-width: 768px) {
   .theme-picker { right: 16px; bottom: 16px; }
 }
+
+/* Engine status not known (API unreachable): neutral dot */
+.sidebar-status-dot:not(.ok):not(.err) { background: var(--text-3); }
+
+/* Demo data marker (spec: demonstrative state must be identified) */
+.demo-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  padding: 8px 14px;
+  border-radius: var(--pill);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--caution);
+  background: var(--caution-soft);
+  border: 1px solid color-mix(in srgb, var(--caution) 30%, transparent);
+}
+.demo-badge svg { width: 16px; height: 16px; flex-shrink: 0; }

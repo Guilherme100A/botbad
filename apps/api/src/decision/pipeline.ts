@@ -16,9 +16,9 @@ import { jevCircuitBreaker } from './circuit-breaker.js';
 import { reserveBudget, reconcileBudget, releaseBudget } from './budget.js';
 import { JevApiError, JevTimeoutError } from '../adapters/jev-real.js';
 
-const POLICY_VERSION = '1.0.0';
-const PROFILE_VERSION = '1.0.0';
-const FEATURE_VERSION = '1.0.0';
+export const POLICY_VERSION = '1.0.0';
+export const PROFILE_VERSION = '1.0.0';
+export const FEATURE_VERSION = '1.0.0';
 
 export interface PipelineInput {
   slug: string;

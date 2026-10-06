@@ -1,28 +1,14 @@
-import { useState, useEffect } from 'react';
-import { listCampaigns } from '../api/client.js';
-import { dashboardStats, engineStatus, initialCampaigns } from '../mock/data.js';
-import type { Campaign } from '@botbad/contracts';
+import { getEngineStatus, getMetricsSummary, listCampaigns } from '../api/client.js';
+import { DEMO_ENGINE, DEMO_METRICS, initialCampaigns } from '../mock/data.js';
+import { useApiData } from '../hooks/useApiData.js';
+import { DemoBadge } from '../components/DemoBadge.js';
 
 export function Dashboard() {
-  const [loading, setLoading] = useState(true);
-  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const metrics = useApiData(() => getMetricsSummary(30), DEMO_METRICS);
+  const engine = useApiData(getEngineStatus, DEMO_ENGINE);
+  const campaignList = useApiData(listCampaigns, initialCampaigns);
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const items = await listCampaigns();
-        if (!cancelled) setCampaigns(items);
-      } catch {
-        if (!cancelled) setCampaigns(initialCampaigns);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, []);
-
-  if (loading) {
+  if (metrics.loading || engine.loading || campaignList.loading) {
     return (
       <div className="loading">
         <div className="spinner" />
@@ -31,10 +17,13 @@ export function Dashboard() {
     );
   }
 
-  const s = dashboardStats;
+  const s = metrics.data;
+  const e = engine.data;
+  const campaigns = campaignList.data;
+  const demo = metrics.demo || engine.demo || campaignList.demo;
   const activeCampaigns = campaigns.filter(c => c.status === 'active').length;
   const totalCampaigns = campaigns.length;
-  const budgetPct = (engineStatus.budgetUsedTokens / engineStatus.budgetLimitTokens) * 100;
+  const budgetPct = e.budget.monthlyLimit > 0 ? Math.min(100, (e.budget.usedMonth / e.budget.monthlyLimit) * 100) : 0;
 
   const fmt = (n: number) => n.toLocaleString('pt-BR');
   const pct = (n: number) => `${((n / s.totalAccesses) * 100).toFixed(1).replace('.', ',')}%`;
@@ -56,29 +45,39 @@ export function Dashboard() {
 
   return (
     <>
+      <DemoBadge show={demo} />
+
       <section className="hero">
         <div className="hero-top">
           <div>
-            <div className="hero-eyebrow">Acessos totais</div>
+            <div className="hero-eyebrow">Acessos nos últimos {s.days} dias</div>
             <div className="hero-value">{fmt(s.totalAccesses)}</div>
-            <div className="hero-caption">{pct(s.routePrimary)} chegaram à página principal</div>
+            <div className="hero-caption">
+              {s.totalAccesses > 0
+                ? `${pct(s.routePrimary)} chegaram à página principal`
+                : 'Nenhum acesso ainda — ative uma campanha e compartilhe o link /r/…'}
+            </div>
           </div>
           <a className="btn btn-primary" href="#/campaigns">Nova campanha</a>
         </div>
 
-        <div className="split-bar" role="img" aria-label="Distribuição das decisões">
-          {split.map(x => <span key={x.key} className={x.cls} style={{ flexGrow: x.value }} />)}
-        </div>
-
-        <div className="legend">
-          {split.map(x => (
-            <div className="legend-item" key={x.key}>
-              <span className={`swatch ${x.cls}`} />
-              {x.label}
-              <span className="num">{fmt(x.value)}</span>
+        {s.totalAccesses > 0 && (
+          <>
+            <div className="split-bar" role="img" aria-label="Distribuição das decisões">
+              {split.map(x => <span key={x.key} className={x.cls} style={{ flexGrow: x.value }} />)}
             </div>
-          ))}
-        </div>
+
+            <div className="legend">
+              {split.map(x => (
+                <div className="legend-item" key={x.key}>
+                  <span className={`swatch ${x.cls}`} />
+                  {x.label}
+                  <span className="num">{fmt(x.value)}</span>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
       </section>
 
       <div className="card-grid section">
@@ -88,17 +87,19 @@ export function Dashboard() {
         </div>
         <div className="card">
           <div className="card-label">Latência p95</div>
-          <div className="card-value">{s.latencyP95Ms}<span className="unit">ms</span></div>
+          <div className="card-value">
+            {s.latencyP95Ms ?? '—'}{s.latencyP95Ms != null && <span className="unit">ms</span>}
+          </div>
         </div>
         <div className="card">
           <div className="card-label">Motor</div>
           <div className="card-value-sm" style={{ height: 35 }}>
-            <span className={`health-dot ${engineStatus.healthy ? 'ok' : 'err'}`} />
-            {engineStatus.healthy ? 'Online' : 'Offline'}
+            <span className={`health-dot ${e.healthy ? 'ok' : 'err'}`} />
+            {e.healthy ? 'Online' : 'Offline'}
           </div>
         </div>
         <div className="card">
-          <div className="card-label">Orçamento Jev</div>
+          <div className="card-label">Orçamento Jev (mês)</div>
           <div className="card-value">{budgetPct.toFixed(0)}<span className="unit">%</span></div>
           <div className="progress-bar" style={{ marginTop: 12 }}>
             <div className="progress-fill" style={{ width: `${budgetPct}%` }} />
@@ -116,7 +117,7 @@ export function Dashboard() {
                 <div className="list-row-sub">{x.sub}</div>
               </div>
               <div className="list-row-meter progress-bar">
-                <div className="progress-fill" style={{ width: `${(x.value / sourcesTotal) * 100}%` }} />
+                <div className="progress-fill" style={{ width: `${sourcesTotal ? (x.value / sourcesTotal) * 100 : 0}%` }} />
               </div>
               <div className="list-row-value num" style={{ minWidth: 64 }}>{fmt(x.value)}</div>
             </div>

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import type { Campaign, Destination, DecisionEvent } from '@botbad/contracts';
-import { listCampaigns, listDestinations, listCampaignEvents } from '../api/client.js';
+import { listCampaigns, listDestinations, listEvents } from '../api/client.js';
+import { DemoBadge } from '../components/DemoBadge.js';
 import {
   decisionEvents,
   initialCampaigns,
@@ -18,6 +19,7 @@ export function History() {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
   const [events, setEvents] = useState<DecisionEvent[]>([]);
+  const [demo, setDemo] = useState(false);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [destinations, setDestinations] = useState<Destination[]>([]);
 
@@ -29,26 +31,15 @@ export function History() {
         if (cancelled) return;
         setCampaigns(c);
         setDestinations(d);
-        const allEvents: DecisionEvent[] = [];
-        for (const campaign of c) {
-          try {
-            const ev = await listCampaignEvents(campaign.id);
-            allEvents.push(...ev);
-          } catch { /* endpoint may not exist yet */ }
-        }
-        if (!cancelled) {
-          if (allEvents.length > 0) {
-            allEvents.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
-            setEvents(allEvents);
-          } else {
-            setEvents(decisionEvents);
-          }
-        }
+        const ev = await listEvents(100);
+        if (!cancelled) setEvents(ev);
       } catch {
+        // API unreachable: show the demo fixture, labeled as such (never mixed with real data).
         if (!cancelled) {
           setCampaigns(initialCampaigns);
           setDestinations(initialDestinations);
           setEvents(decisionEvents);
+          setDemo(true);
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -81,6 +72,7 @@ export function History() {
 
   return (
     <div className="section">
+      <DemoBadge show={demo} />
       <div className="section-header">
         <h2 className="section-title" style={{ margin: 0 }}>Eventos<span className="count">{total}</span></h2>
       </div>
