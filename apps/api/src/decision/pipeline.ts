@@ -20,7 +20,7 @@ const POLICY_VERSION = '1.0.0';
 const PROFILE_VERSION = '1.0.0';
 const FEATURE_VERSION = '1.0.0';
 
-interface PipelineInput {
+export interface PipelineInput {
   slug: string;
   peerIp: string;
   userAgent: string;
@@ -28,10 +28,23 @@ interface PipelineInput {
   trustedProxies?: string[];
 }
 
-interface PipelineResult {
+export interface PipelineResult {
   decision: RoutingDecision;
   destinationUrl: string | null;
   jevAssessment: JevAssessment | null;
+}
+
+export interface ResolvedCampaignData {
+  campaign: {
+    id: string;
+    tenantId: string;
+    networkProfile: NetworkProfile;
+    status: string;
+    primaryDestinationId: string;
+    alternativeDestinationId: string;
+  };
+  primaryDest: { id: string; url: string };
+  altDest: { id: string; url: string };
 }
 
 let activeAdapter: JevAdapter | null = null;
@@ -113,6 +126,89 @@ async function recordEvent(
   } catch (err) {
     console.error('[pipeline] Failed to record decision event:', err);
   }
+}
+
+export async function executePipelineWithData(
+  input: PipelineInput,
+  data: ResolvedCampaignData,
+  evidence: NetworkEvidence,
+  adapter: JevAdapter | null,
+  options?: { skipBudget?: boolean; skipEventRecording?: boolean },
+): Promise<PipelineResult> {
+  const startTime = Date.now();
+  const { campaign, primaryDest, altDest } = data;
+  const networkProfile = campaign.networkProfile;
+  const evidenceVersion = evidence.sourceVersion;
+
+  const rateResult = checkRateLimit(campaign.tenantId);
+  if (!rateResult.allowed) {
+    const decision = makeDecision('deny', 'rule', 'RATE_LIMIT', networkProfile, null, null, null, startTime);
+    recordRequest(campaign.tenantId);
+    return { decision, destinationUrl: null, jevAssessment: null };
+  }
+  recordRequest(campaign.tenantId);
+
+  const suspiciousHeaders = detectSuspiciousHeaders(input.headers);
+  const missingExpectedHeaders = detectMissingExpectedHeaders(input.headers);
+
+  if (suspiciousHeaders && missingExpectedHeaders) {
+    const decision = makeDecision('route_alternative', 'rule', 'RULE_ABUSE', networkProfile, altDest.id, null, evidenceVersion, startTime);
+    return { decision, destinationUrl: altDest.url, jevAssessment: null };
+  }
+
+  if (evidence.status === 'verified_bot' && evidence.botIdentity && !evidence.stale) {
+    const decision = makeDecision(
+      'route_alternative', 'rule', 'VERIFIED_BOT_ALTERNATIVE',
+      networkProfile, altDest.id, evidence.botIdentity, evidenceVersion, startTime,
+    );
+    return { decision, destinationUrl: altDest.url, jevAssessment: null };
+  }
+
+  if (!adapter) {
+    const decision = makeDecision('route_alternative', 'fallback', 'ENGINE_FAILURE_ALTERNATIVE', networkProfile, altDest.id, null, evidenceVersion, startTime);
+    return { decision, destinationUrl: altDest.url, jevAssessment: null };
+  }
+
+  if (!jevCircuitBreaker.canExecute()) {
+    const decision = makeDecision('route_alternative', 'fallback', 'ENGINE_FAILURE_ALTERNATIVE', networkProfile, altDest.id, null, evidenceVersion, startTime);
+    return { decision, destinationUrl: altDest.url, jevAssessment: null };
+  }
+
+  if (!options?.skipBudget) {
+    const budgetResult = await reserveBudget(campaign.tenantId);
+    if (!budgetResult.reserved) {
+      const decision = makeDecision('route_alternative', 'fallback', 'BUDGET_EXHAUSTED', networkProfile, altDest.id, null, evidenceVersion, startTime);
+      return { decision, destinationUrl: altDest.url, jevAssessment: null };
+    }
+  }
+
+  let jevAssessment: JevAssessment | null = null;
+  try {
+    jevAssessment = await adapter.assess({
+      tenantId: campaign.tenantId,
+      campaignId: campaign.id,
+      networkProfile,
+      policyVersion: POLICY_VERSION,
+      profileVersion: PROFILE_VERSION,
+      networkEvidence: evidence,
+      sessionIntegrity: { hasValidSession: false, challengeCompleted: false, sessionAgeMs: null },
+      frequencyCounters: { requestsLastMinute: 0, requestsLastHour: 0, uniqueCampaignsLastHour: 0 },
+      abuseSignals: { rateLimitHit: false, suspiciousHeaders, missingExpectedHeaders },
+    });
+    jevCircuitBreaker.recordSuccess();
+  } catch {
+    jevCircuitBreaker.recordFailure();
+    const decision = makeDecision('route_alternative', 'fallback', 'ENGINE_FAILURE_ALTERNATIVE', networkProfile, altDest.id, null, evidenceVersion, startTime);
+    return { decision, destinationUrl: altDest.url, jevAssessment: null };
+  }
+
+  const decision = applyPolicy(jevAssessment, networkProfile, primaryDest.id, altDest.id, evidenceVersion, startTime);
+  const destinationUrl =
+    decision.action === 'route_primary' ? primaryDest.url :
+    decision.action === 'route_alternative' ? altDest.url :
+    null;
+
+  return { decision, destinationUrl, jevAssessment };
 }
 
 export async function executePipeline(input: PipelineInput): Promise<PipelineResult> {
@@ -270,7 +366,7 @@ export async function executePipeline(input: PipelineInput): Promise<PipelineRes
   return { decision, destinationUrl, jevAssessment };
 }
 
-function applyPolicy(
+export function applyPolicy(
   assessment: JevAssessment,
   networkProfile: NetworkProfile,
   primaryDestId: string,

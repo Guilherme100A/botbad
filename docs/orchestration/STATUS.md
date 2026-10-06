@@ -1,39 +1,31 @@
 # JEV Traffic Router — Checkpoint
 
 **Data:** 2026-10-06
-**Tarefa atual:** T0 (running)
-**Revisao-base:** commit inicial
+**Tarefa atual:** T5 (integração)
+**Revisão-base:** 3d8db61
 
-## Concluido
+## Concluído
 
-- SHA-256 da base v0.4 verificado: `0089DD0478D47CAD46E0F583B0D0C14BA0D925B16706DE33B6E633364578994B`
-- Git inicializado
-- Estrutura de diretorios criada
-- Specs copiadas para docs/
-- Documentos de orquestracao criados (PLAN, CONTRACTS, DECISIONS, BUDGET, ACCEPTANCE, STATUS)
+| Tarefa | Commit | Entregas |
+|--------|--------|----------|
+| T0 | 6a916ba | Contratos Zod, fixtures, protocolo avaliação, ADRs, orçamento, fontes |
+| T1 | ac10d2e | Monorepo funcional, deps instaladas, adapter mock, typecheck OK |
+| T2 | a29dc90 | 6 telas React, layout, formulário campanha, simulação 4 cenários |
+| T3 | b720369 | Schema Drizzle 8 tabelas, API Hono, auth, CRUD campanhas, audit log |
+| T4 | 3d8db61 | Pipeline decisão, adapter Jev real, circuit breaker, budget, rate limit |
 
 ## Em andamento
 
-- Definicao dos contratos TypeScript/Zod em packages/contracts/src/
-- Fixtures compartilhadas
-- Comandos de validacao
+- T5: Integração painel+API, E2E, métricas, auditoria
 
-## Pendente (T0)
+## Gates externos (não validados)
 
-- Identificar fontes ASN disponiveis com licenca
-- Identificar fontes de identidade de bots por servico
-- Definir provedor de desafio (ou registrar gate pendente)
-- Protocolo de avaliacao estatistica
-- Adapter mock do Jev
+- Conta Jev (TypeSafe AI): acesso não confirmado
+- Fonte ASN: MaxMind GeoLite2 candidata, licença TBD
+- Provedor de desafio: TBD (Turnstile/hCaptcha)
+- Conjunto rotulado: não existe
+- Ambiente de deploy: não definido
 
-## Gates externos (nao validados)
+## Próximo passo
 
-- Conta Jev (TypeSafe AI): acesso nao confirmado
-- Fonte ASN: a identificar
-- Provedor de desafio: TBD
-- Conjunto rotulado: nao existe
-- Ambiente de deploy: nao definido
-
-## Proximo passo
-
-Completar contratos Zod, fixtures e scripts de validacao. Registrar fontes disponiveis e limitacoes.
+T5: conectar painel à API, demonstrar fluxo completo, testes E2E.

@@ -1,5 +1,14 @@
-import { useState } from 'react';
-import type { Campaign, CampaignStatus, NetworkProfile } from '@botbad/contracts';
+import { useState, useEffect } from 'react';
+import type { Campaign, CampaignStatus, NetworkProfile, Destination } from '@botbad/contracts';
+import {
+  listCampaigns,
+  listDestinations,
+  createCampaign as apiCreateCampaign,
+  createDestination as apiCreateDestination,
+  activateCampaign,
+  pauseCampaign,
+  ApiError,
+} from '../api/client.js';
 import {
   initialCampaigns,
   initialDestinations,
@@ -11,29 +20,77 @@ import {
   SOURCE_LABELS,
   REASON_LABELS,
 } from '../mock/data.js';
-import type { Destination } from '@botbad/contracts';
 
 export function Campaigns() {
-  const [campaigns, setCampaigns] = useState<Campaign[]>(initialCampaigns);
-  const [destinations, setDestinations] = useState<Destination[]>(initialDestinations);
+  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [destinations, setDestinations] = useState<Destination[]>([]);
+  const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [simulating, setSimulating] = useState<string | null>(null);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [usingApi, setUsingApi] = useState(false);
 
-  // Create form state
   const [formName, setFormName] = useState('');
   const [formPrimaryUrl, setFormPrimaryUrl] = useState('');
   const [formAltUrl, setFormAltUrl] = useState('');
   const [formProfile, setFormProfile] = useState<NetworkProfile>('general');
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [formError, setFormError] = useState('');
+  const [formLoading, setFormLoading] = useState(false);
 
-  function handleCreate() {
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const [c, d] = await Promise.all([listCampaigns(), listDestinations()]);
+        if (!cancelled) {
+          setCampaigns(c);
+          setDestinations(d);
+          setUsingApi(true);
+        }
+      } catch {
+        if (!cancelled) {
+          setCampaigns(initialCampaigns);
+          setDestinations(initialDestinations);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  async function handleCreate() {
     setFormError('');
 
     if (!formName.trim()) { setFormError('Nome é obrigatório.'); return; }
     if (!formPrimaryUrl.startsWith('https://')) { setFormError('Destino principal deve usar HTTPS.'); return; }
     if (!formAltUrl.startsWith('https://')) { setFormError('Destino alternativo deve usar HTTPS.'); return; }
     if (formPrimaryUrl === formAltUrl) { setFormError('Os destinos devem ser distintos.'); return; }
+
+    if (usingApi) {
+      setFormLoading(true);
+      try {
+        const [pd, ad] = await Promise.all([
+          apiCreateDestination({ url: formPrimaryUrl, label: `Destino principal — ${formName}` }),
+          apiCreateDestination({ url: formAltUrl, label: `Destino alternativo — ${formName}` }),
+        ]);
+        const campaign = await apiCreateCampaign({
+          name: formName,
+          primaryDestinationId: pd.id,
+          alternativeDestinationId: ad.id,
+          networkProfile: formProfile !== 'general' ? formProfile : undefined,
+        });
+        setDestinations(prev => [...prev, pd, ad]);
+        setCampaigns(prev => [campaign, ...prev]);
+        resetForm();
+      } catch (err) {
+        setFormError(err instanceof ApiError ? err.message : 'Erro ao criar campanha.');
+      } finally {
+        setFormLoading(false);
+      }
+      return;
+    }
 
     const now = new Date().toISOString();
     const n = campaigns.length + destinations.length + 100;
@@ -42,49 +99,68 @@ export function Campaigns() {
       tenantId: '00000000-0000-4000-a000-000000000001',
       url: formPrimaryUrl,
       label: `Destino principal — ${formName}`,
-      createdAt: now,
-      updatedAt: now,
+      createdAt: now, updatedAt: now,
     };
     const ad: Destination = {
       id: `d-new-${n}-0000-4000-a000-000000000002`,
       tenantId: '00000000-0000-4000-a000-000000000001',
       url: formAltUrl,
       label: `Destino alternativo — ${formName}`,
-      createdAt: now,
-      updatedAt: now,
+      createdAt: now, updatedAt: now,
     };
-
     const slug = formName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '').slice(0, 128);
     const campaign: Campaign = {
       id: `c-new-${n}-0000-4000-a000-000000000001`,
       tenantId: '00000000-0000-4000-a000-000000000001',
-      name: formName,
-      slug,
-      primaryDestinationId: pd.id,
-      alternativeDestinationId: ad.id,
-      networkProfile: formProfile,
-      status: 'draft',
-      policyVersion: '1.0.0',
-      createdAt: now,
-      updatedAt: now,
+      name: formName, slug,
+      primaryDestinationId: pd.id, alternativeDestinationId: ad.id,
+      networkProfile: formProfile, status: 'draft',
+      policyVersion: '1.0.0', createdAt: now, updatedAt: now,
     };
 
     setDestinations(prev => [...prev, pd, ad]);
     setCampaigns(prev => [campaign, ...prev]);
+    resetForm();
+  }
+
+  function resetForm() {
     setFormName('');
     setFormPrimaryUrl('');
     setFormAltUrl('');
     setFormProfile('general');
     setShowAdvanced(false);
     setShowCreate(false);
+    setFormError('');
   }
 
-  function toggleStatus(id: string) {
-    setCampaigns(prev => prev.map(c => {
-      if (c.id !== id) return c;
-      const next: CampaignStatus = c.status === 'active' ? 'paused' : 'active';
-      return { ...c, status: next, updatedAt: new Date().toISOString() };
+  async function toggleStatus(id: string) {
+    const c = campaigns.find(x => x.id === id);
+    if (!c) return;
+
+    if (usingApi) {
+      setActionLoading(id);
+      try {
+        const updated = c.status === 'active'
+          ? await pauseCampaign(id)
+          : await activateCampaign(id);
+        setCampaigns(prev => prev.map(x => x.id === id ? updated : x));
+      } catch (err) {
+        alert(err instanceof ApiError ? err.message : 'Erro ao alterar status.');
+      } finally {
+        setActionLoading(null);
+      }
+      return;
+    }
+
+    setCampaigns(prev => prev.map(x => {
+      if (x.id !== id) return x;
+      const next: CampaignStatus = x.status === 'active' ? 'paused' : 'active';
+      return { ...x, status: next, updatedAt: new Date().toISOString() };
     }));
+  }
+
+  if (loading) {
+    return <div className="loading"><div className="spinner" />Carregando campanhas...</div>;
   }
 
   if (campaigns.length === 0 && !showCreate) {
@@ -105,7 +181,6 @@ export function Campaigns() {
         <button className="btn btn-primary btn-sm" onClick={() => setShowCreate(true)}>+ Criar campanha</button>
       </div>
 
-      {/* Campaign list */}
       <div className="table-wrap">
         <table>
           <thead>
@@ -122,6 +197,7 @@ export function Campaigns() {
               const primaryDest = getDestination(destinations, c.primaryDestinationId);
               const altDest = getDestination(destinations, c.alternativeDestinationId);
               const isExpanded = simulating === c.id;
+              const isLoading = actionLoading === c.id;
 
               return (
                 <tr key={c.id} style={{ verticalAlign: 'top' }}>
@@ -146,8 +222,9 @@ export function Campaigns() {
                         <button
                           className={`btn btn-sm ${c.status === 'active' ? 'btn-danger' : 'btn-primary'}`}
                           onClick={() => toggleStatus(c.id)}
+                          disabled={isLoading}
                         >
-                          {c.status === 'active' ? 'Pausar' : 'Ativar'}
+                          {isLoading ? '...' : c.status === 'active' ? 'Pausar' : 'Ativar'}
                         </button>
                       )}
                     </div>
@@ -260,8 +337,10 @@ export function Campaigns() {
             )}
 
             <div className="modal-actions">
-              <button className="btn btn-secondary" onClick={() => setShowCreate(false)}>Cancelar</button>
-              <button className="btn btn-primary" onClick={handleCreate}>Criar campanha</button>
+              <button className="btn btn-secondary" onClick={() => setShowCreate(false)} disabled={formLoading}>Cancelar</button>
+              <button className="btn btn-primary" onClick={handleCreate} disabled={formLoading}>
+                {formLoading ? 'Criando...' : 'Criar campanha'}
+              </button>
             </div>
           </div>
         </div>

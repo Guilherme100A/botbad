@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import type { Campaign, Destination, DecisionEvent } from '@botbad/contracts';
+import { listCampaigns, listDestinations, listCampaignEvents } from '../api/client.js';
 import {
   decisionEvents,
   initialCampaigns,
@@ -12,17 +14,51 @@ import {
 
 export function Traffic() {
   const [loading, setLoading] = useState(true);
+  const [events, setEvents] = useState<DecisionEvent[]>([]);
+  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [destinations, setDestinations] = useState<Destination[]>([]);
 
   useEffect(() => {
-    const t = setTimeout(() => setLoading(false), 300);
-    return () => clearTimeout(t);
+    let cancelled = false;
+    (async () => {
+      try {
+        const [c, d] = await Promise.all([listCampaigns(), listDestinations()]);
+        if (cancelled) return;
+        setCampaigns(c);
+        setDestinations(d);
+        const allEvents: DecisionEvent[] = [];
+        for (const campaign of c) {
+          try {
+            const ev = await listCampaignEvents(campaign.id);
+            allEvents.push(...ev);
+          } catch { /* endpoint may not exist yet */ }
+        }
+        if (!cancelled) {
+          if (allEvents.length > 0) {
+            allEvents.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+            setEvents(allEvents);
+          } else {
+            setEvents(decisionEvents);
+          }
+        }
+      } catch {
+        if (!cancelled) {
+          setCampaigns(initialCampaigns);
+          setDestinations(initialDestinations);
+          setEvents(decisionEvents);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
   }, []);
 
   if (loading) {
     return <div className="loading"><div className="spinner" />Carregando decisões...</div>;
   }
 
-  const recent = decisionEvents.slice(0, 15);
+  const recent = events.slice(0, 15);
 
   if (recent.length === 0) {
     return (
@@ -53,8 +89,8 @@ export function Traffic() {
             </thead>
             <tbody>
               {recent.map(ev => {
-                const campaign = getCampaignById(initialCampaigns, ev.campaignId);
-                const dest = getDestination(initialDestinations, ev.destinationId);
+                const campaign = getCampaignById(campaigns, ev.campaignId);
+                const dest = getDestination(destinations, ev.destinationId);
                 const time = new Date(ev.timestamp);
                 const timeStr = time.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 

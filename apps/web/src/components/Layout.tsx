@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from 'react';
+import { useAuth } from '../context/AuthContext.js';
 
 interface NavItem {
   path: string;
@@ -55,6 +56,7 @@ interface LayoutProps {
 
 export function Layout({ route, children }: LayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { logout } = useAuth();
 
   return (
     <div className="layout">
@@ -85,7 +87,12 @@ export function Layout({ route, children }: LayoutProps) {
           ))}
         </div>
 
-        <div className="sidebar-footer">JEV Traffic Router v0.1.0</div>
+        <div className="sidebar-footer">
+          <button className="btn btn-secondary btn-sm" onClick={logout} style={{ width: '100%', marginBottom: 8 }}>
+            Sair
+          </button>
+          JEV Traffic Router v0.1.0
+        </div>
       </nav>
 
       <div className="main-area">

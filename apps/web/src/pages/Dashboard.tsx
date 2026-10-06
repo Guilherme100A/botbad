@@ -1,12 +1,25 @@
 import { useState, useEffect } from 'react';
-import { dashboardStats, engineStatus } from '../mock/data.js';
+import { listCampaigns } from '../api/client.js';
+import { dashboardStats, engineStatus, initialCampaigns } from '../mock/data.js';
+import type { Campaign } from '@botbad/contracts';
 
 export function Dashboard() {
   const [loading, setLoading] = useState(true);
+  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
 
   useEffect(() => {
-    const t = setTimeout(() => setLoading(false), 400);
-    return () => clearTimeout(t);
+    let cancelled = false;
+    (async () => {
+      try {
+        const items = await listCampaigns();
+        if (!cancelled) setCampaigns(items);
+      } catch {
+        if (!cancelled) setCampaigns(initialCampaigns);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
   }, []);
 
   if (loading) {
@@ -19,6 +32,8 @@ export function Dashboard() {
   }
 
   const s = dashboardStats;
+  const activeCampaigns = campaigns.filter(c => c.status === 'active').length;
+  const totalCampaigns = campaigns.length;
 
   return (
     <>
@@ -38,6 +53,21 @@ export function Dashboard() {
           <div className="onboarding-num">3</div>
           <div className="onboarding-title">Ativar</div>
           <div className="onboarding-desc">Ative o roteamento após validar os resultados.</div>
+        </div>
+      </div>
+
+      {/* Campaign summary */}
+      <div className="section">
+        <h2 className="section-title">Campanhas</h2>
+        <div className="card-grid">
+          <div className="card">
+            <div className="card-label">Total</div>
+            <div className="card-value">{totalCampaigns}</div>
+          </div>
+          <div className="card">
+            <div className="card-label">Ativas</div>
+            <div className="card-value" style={{ color: 'var(--green)' }}>{activeCampaigns}</div>
+          </div>
         </div>
       </div>
 
