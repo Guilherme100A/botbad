@@ -74,23 +74,30 @@ interface LayoutProps {
   children: ReactNode;
 }
 
-/** Fixed ambient layer behind the app: dark-neon rain, drifting glow, faint grid. */
+/** Fixed ambient layer behind the app. Every style picks which layers show (themes.css). */
 export function BackgroundFx() {
   const { rain } = useTheme().theme;
   return (
     <div className="bg-fx" aria-hidden="true">
       <span className="bg-orb bg-orb-a" />
       <span className="bg-orb bg-orb-b" />
-      <MatrixRain
-        className="bg-rain"
-        size={18}
-        interval={rain.interval}
-        density={rain.density}
-        color={rain.color}
-        headColor={rain.head}
-        glow={rain.glow}
-      />
+      <span className="bg-orb bg-orb-c" />
+      <div className="bg-sun" />
+      <div className="bg-floor" />
+      {rain && (
+        <MatrixRain
+          className="bg-rain"
+          size={18}
+          interval={rain.interval}
+          density={rain.density}
+          color={rain.color}
+          headColor={rain.head}
+          glow={rain.glow}
+        />
+      )}
       <div className="bg-grid" />
+      <div className="bg-grain" />
+      <div className="bg-scan" />
       <div className="bg-vignette" />
     </div>
   );

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { THEMES, useTheme } from '../context/ThemeContext.js';
 
-/** Floating button bottom-right that opens a grid of the available themes. */
+/** Floating button bottom-right that opens a grid of the available styles. */
 export function ThemePicker() {
   const { theme, setTheme } = useTheme();
   const [open, setOpen] = useState(false);
@@ -24,9 +24,9 @@ export function ThemePicker() {
   return (
     <div className="theme-picker" ref={ref}>
       {open && (
-        <div className="theme-panel" role="dialog" aria-label="Escolher tema">
+        <div className="theme-panel" role="dialog" aria-label="Escolher estilo">
           <div className="theme-panel-head">
-            <span className="theme-panel-title">Tema</span>
+            <span className="theme-panel-title">Estilo</span>
             <span className="theme-panel-current">{theme.name}</span>
           </div>
           <div className="theme-grid">
@@ -37,22 +37,18 @@ export function ThemePicker() {
                 className={`theme-option ${t.id === theme.id ? 'selected' : ''}`}
                 onClick={() => setTheme(t.id)}
                 aria-pressed={t.id === theme.id}
-                title={t.name}
               >
-                <span
-                  className="theme-swatch"
-                  style={{
-                    background: `radial-gradient(circle at 70% 20%, rgba(${t.orb}, 0.9), transparent 70%), ${t.bgTint}`,
-                    ['--sw' as string]: `rgb(${t.accent})`,
-                    ['--sw-rain' as string]: t.rain.color,
-                  }}
-                >
-                  <span className="theme-swatch-rain">1<br />0<br />7</span>
-                  <span className="theme-swatch-rain r2">4<br />9<br />2</span>
-                  <span className="theme-swatch-rain r3">0<br />3<br />8</span>
-                  <span className="theme-swatch-dot" />
+                {/* Static miniature of the style; styled per id in themes.css */}
+                <span className={`pv pv-${t.id}`}>
+                  <span className="pv-fx" />
+                  <span className="pv-card">
+                    <span className="pv-title">Aa</span>
+                    <span className="pv-num">12.847</span>
+                    <span className="pv-btn" />
+                  </span>
                 </span>
                 <span className="theme-name">{t.name}</span>
+                <span className="theme-desc">{t.desc}</span>
               </button>
             ))}
           </div>
@@ -63,7 +59,7 @@ export function ThemePicker() {
         type="button"
         className={`theme-fab ${open ? 'open' : ''}`}
         onClick={() => setOpen(o => !o)}
-        aria-label="Escolher tema"
+        aria-label="Escolher estilo"
         aria-expanded={open}
       >
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
