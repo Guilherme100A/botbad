@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext.js';
+import { ThemeProvider } from './context/ThemeContext.js';
+import { ThemePicker } from './components/ThemePicker.js';
 import { Layout } from './components/Layout.js';
 import { Login } from './pages/Login.js';
 import { Dashboard } from './pages/Dashboard.js';
@@ -61,8 +63,11 @@ function AppRoutes() {
 
 export function App() {
   return (
-    <AuthProvider>
-      <AppRoutes />
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <AppRoutes />
+        <ThemePicker />
+      </AuthProvider>
+    </ThemeProvider>
   );
 }

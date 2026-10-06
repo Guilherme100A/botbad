@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 
-const GLYPHS = 'アイウエオカキクケコサシスセソタチツテトナニヌネノ0123456789';
+const GLYPHS = '0123456789';
 
 interface MatrixRainProps {
   className?: string;
