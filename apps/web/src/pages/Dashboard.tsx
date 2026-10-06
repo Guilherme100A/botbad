@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { listCampaigns } from '../api/client.js';
 import { dashboardStats, engineStatus, initialCampaigns } from '../mock/data.js';
 import type { Campaign } from '@botbad/contracts';
-import { MatrixRain } from '../components/MatrixRain.js';
 
 export function Dashboard() {
   const [loading, setLoading] = useState(true);
@@ -58,7 +57,6 @@ export function Dashboard() {
   return (
     <>
       <section className="hero">
-        <MatrixRain className="hero-rain" size={14} interval={80} density={0.35} />
         <div className="hero-top">
           <div>
             <div className="hero-eyebrow">Acessos totais</div>

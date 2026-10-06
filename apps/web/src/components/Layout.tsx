@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { useAuth } from '../context/AuthContext.js';
 import { engineStatus } from '../mock/data.js';
+import { MatrixRain } from './MatrixRain.js';
 
 const SPOT_SELECTOR = '.card, .hero, .campaign-card, .list, .info-item, .sim-card, .table-wrap';
 
@@ -72,6 +73,19 @@ interface LayoutProps {
   children: ReactNode;
 }
 
+/** Fixed ambient layer behind the app: dark-neon rain, drifting glow, faint grid. */
+export function BackgroundFx() {
+  return (
+    <div className="bg-fx" aria-hidden="true">
+      <span className="bg-orb bg-orb-a" />
+      <span className="bg-orb bg-orb-b" />
+      <MatrixRain className="bg-rain" size={18} interval={70} density={0.65} color="#14b04e" headColor="#7dffb0" glow={14} />
+      <div className="bg-grid" />
+      <div className="bg-vignette" />
+    </div>
+  );
+}
+
 export function Logo() {
   return (
     <>
@@ -124,6 +138,7 @@ export function Layout({ route, children }: LayoutProps) {
 
   return (
     <div className="layout">
+      <BackgroundFx />
       <div
         className={`sidebar-overlay ${sidebarOpen ? 'open' : ''}`}
         onClick={() => setSidebarOpen(false)}

@@ -627,15 +627,6 @@ tbody tr:hover td { background: rgba(255, 255, 255, 0.025); }
   background: var(--bg);
   overflow: hidden;
 }
-.matrix-rain {
-  position: absolute; inset: 0;
-  width: 100%; height: 100%;
-  opacity: 0.16;
-  -webkit-mask-image: radial-gradient(ellipse at center, transparent 18%, #000 75%);
-  mask-image: radial-gradient(ellipse at center, transparent 18%, #000 75%);
-  pointer-events: none;
-}
-
 .login-card {
   position: relative;
   width: 100%;
@@ -750,17 +741,79 @@ tbody tr:hover td { background: rgba(255, 255, 255, 0.025); }
    Matrix cues kept quiet: sparse rain, a glow that follows the cursor,
    data that arrives row by row. Everything collapses under prefers-reduced-motion. */
 
-/* Sparse rain living in the hero's top-right corner */
-.hero > :not(.hero-rain) { position: relative; z-index: 1; }
-.hero-rain {
-  position: absolute;
-  top: 0; right: 0;
-  width: 60%; height: 100%;
-  opacity: 0.5;
+/* Ambient background: dark-neon rain, drifting glow, a slow grid. Sits behind everything. */
+.bg-fx {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
   pointer-events: none;
-  -webkit-mask-image: radial-gradient(120% 100% at 100% 0%, #000 0%, transparent 70%);
-  mask-image: radial-gradient(120% 100% at 100% 0%, #000 0%, transparent 70%);
+  background: radial-gradient(120% 80% at 50% 0%, #020a05 0%, #000 60%);
 }
+.main-area, .login-card { position: relative; z-index: 1; }
+
+.bg-rain {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  opacity: 0.8;
+  -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 18%, #000 70%, transparent 100%);
+  mask-image: linear-gradient(180deg, transparent 0%, #000 18%, #000 70%, transparent 100%);
+}
+
+.bg-orb {
+  position: absolute;
+  width: 70vmax; height: 70vmax;
+  border-radius: 50%;
+  filter: blur(60px);
+  will-change: transform;
+}
+.bg-orb-a {
+  top: -30vmax; left: -15vmax;
+  background: radial-gradient(circle, rgba(0, 150, 60, 0.32), transparent 62%);
+  animation: drift-a 28s ease-in-out infinite alternate;
+}
+.bg-orb-b {
+  bottom: -35vmax; right: -20vmax;
+  background: radial-gradient(circle, rgba(0, 255, 106, 0.13), transparent 62%);
+  animation: drift-b 36s ease-in-out infinite alternate;
+}
+@keyframes drift-a {
+  to { transform: translate(18vw, 22vh) scale(1.15); }
+}
+@keyframes drift-b {
+  to { transform: translate(-22vw, -18vh) scale(0.9); }
+}
+
+.bg-grid {
+  position: absolute; inset: -48px 0 0;
+  background-image:
+    linear-gradient(rgba(0, 255, 106, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 255, 106, 0.035) 1px, transparent 1px);
+  background-size: 48px 48px;
+  -webkit-mask-image: radial-gradient(ellipse 70% 60% at 50% 40%, #000, transparent 75%);
+  mask-image: radial-gradient(ellipse 70% 60% at 50% 40%, #000, transparent 75%);
+  animation: grid-fall 8s linear infinite;
+}
+@keyframes grid-fall { to { transform: translateY(48px); } }
+
+.bg-vignette {
+  position: absolute; inset: 0;
+  background: radial-gradient(ellipse at center, transparent 45%, rgba(0, 0, 0, 0.75) 100%);
+}
+
+/* Surfaces become dark glass so the background reads through */
+.card, .hero, .campaign-card, .list, .info-item, .sim-card, .table-wrap {
+  background-color: rgba(10, 13, 11, 0.62);
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+}
+.hero {
+  background:
+    radial-gradient(120% 140% at 100% 0%, rgba(0, 255, 106, 0.08), transparent 55%),
+    rgba(10, 13, 11, 0.62);
+}
+.sidebar { background: rgba(4, 8, 5, 0.6); }
+@media (max-width: 768px) { .sidebar { background: rgba(4, 8, 5, 0.92); } }
 
 /* Cursor spotlight: soft fill behind content + a lit hairline ring */
 .card, .hero, .campaign-card, .list, .info-item, .sim-card, .table-wrap {

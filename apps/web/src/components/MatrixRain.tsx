@@ -10,10 +10,24 @@ interface MatrixRainProps {
   interval?: number;
   /** 0–1 chance a column is active; lower is sparser. */
   density?: number;
+  /** Trail glyph color. */
+  color?: string;
+  /** Color of the occasional bright glyph. */
+  headColor?: string;
+  /** Neon bloom around glyphs, in px. 0 disables. */
+  glow?: number;
 }
 
 /** Low-key digital rain on a transparent canvas. Decorative; respects reduced motion, pauses off-screen. */
-export function MatrixRain({ className = 'matrix-rain', size = 16, interval = 60, density = 1 }: MatrixRainProps) {
+export function MatrixRain({
+  className = 'matrix-rain',
+  size = 16,
+  interval = 60,
+  density = 1,
+  color = '#00ff6a',
+  headColor = '#d8ffe6',
+  glow = 0,
+}: MatrixRainProps) {
   const ref = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -49,10 +63,12 @@ export function MatrixRain({ className = 'matrix-rain', size = 16, interval = 60
       ctx.fillRect(0, 0, canvas.clientWidth, canvas.clientHeight);
       ctx.globalCompositeOperation = 'source-over';
       ctx.font = `${size - 2}px "JetBrains Mono", monospace`;
+      ctx.shadowColor = color;
+      ctx.shadowBlur = glow;
       for (let i = 0; i < drops.length; i++) {
         if (!active[i]) continue;
         const y = (drops[i] ?? 0) * size;
-        ctx.fillStyle = Math.random() > 0.975 ? '#d8ffe6' : '#00ff6a';
+        ctx.fillStyle = Math.random() > 0.975 ? headColor : color;
         ctx.fillText(GLYPHS.charAt((Math.random() * GLYPHS.length) | 0), i * size, y);
         if (y > canvas.clientHeight && Math.random() > 0.975) {
           drops[i] = 0;
@@ -73,7 +89,7 @@ export function MatrixRain({ className = 'matrix-rain', size = 16, interval = 60
       io.disconnect();
       window.removeEventListener('resize', resize);
     };
-  }, [size, interval, density]);
+  }, [size, interval, density, color, headColor, glow]);
 
   return <canvas ref={ref} className={className} aria-hidden="true" />;
 }

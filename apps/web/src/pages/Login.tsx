@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext.js';
-import { MatrixRain } from '../components/MatrixRain.js';
+import { BackgroundFx } from '../components/Layout.js';
 
 export function Login() {
   const { login, loading } = useAuth();
@@ -25,7 +25,7 @@ export function Login() {
 
   return (
     <div className="login-page">
-      <MatrixRain />
+      <BackgroundFx />
       <div className="login-card">
         <div className="login-logo">
           <div className="sidebar-logo-icon">
