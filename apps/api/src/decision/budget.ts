@@ -52,6 +52,49 @@ export async function reserveBudget(
   startOfMonth.setUTCHours(0, 0, 0, 0);
 
   try {
+    // Atomic INSERT ... SELECT to prevent TOCTOU race
+    const result = await db.execute(sql`
+      INSERT INTO budget_reservations (id, tenant_id, tokens_reserved, status, reserved_at)
+      SELECT gen_random_uuid(), ${tenantId}, ${config.reservationSize}, 'pending', now()
+      WHERE (
+        SELECT coalesce(sum(tokens_reserved), 0)
+        FROM budget_reservations
+        WHERE tenant_id = ${tenantId} AND reserved_at >= ${startOfDay}
+      ) + ${config.reservationSize} <= ${config.dailyTokenLimit}
+      AND (
+        SELECT coalesce(sum(tokens_reserved), 0)
+        FROM budget_reservations
+        WHERE tenant_id = ${tenantId} AND reserved_at >= ${startOfMonth}
+      ) + ${config.reservationSize} <= ${config.monthlyTokenLimit}
+      RETURNING id
+    `);
+
+    const rows = result as unknown as Array<{ id: string }>;
+    if (!rows || rows.length === 0) {
+      // Check which limit was hit for alerts
+      const dailyRows = await db
+        .select({
+          total: sql<number>`coalesce(sum(${budgetReservations.tokensReserved}), 0)`.as('total'),
+        })
+        .from(budgetReservations)
+        .where(
+          and(
+            eq(budgetReservations.tenantId, tenantId),
+            sql`${budgetReservations.reservedAt} >= ${startOfDay}`,
+          ),
+        );
+      const dailyUsed = Number(dailyRows[0]?.total ?? 0);
+      checkAlerts(tenantId, dailyUsed, config.dailyTokenLimit, 'daily');
+
+      if (dailyUsed + config.reservationSize > config.dailyTokenLimit) {
+        return { reserved: false, reason: 'Daily token budget exhausted' };
+      }
+      return { reserved: false, reason: 'Monthly token budget exhausted' };
+    }
+
+    const reservationId = rows[0].id;
+
+    // Fire alerts asynchronously
     const dailyRows = await db
       .select({
         total: sql<number>`coalesce(sum(${budgetReservations.tokensReserved}), 0)`.as('total'),
@@ -63,13 +106,8 @@ export async function reserveBudget(
           sql`${budgetReservations.reservedAt} >= ${startOfDay}`,
         ),
       );
-
     const dailyUsed = Number(dailyRows[0]?.total ?? 0);
     checkAlerts(tenantId, dailyUsed, config.dailyTokenLimit, 'daily');
-
-    if (dailyUsed + config.reservationSize > config.dailyTokenLimit) {
-      return { reserved: false, reason: 'Daily token budget exhausted' };
-    }
 
     const monthlyRows = await db
       .select({
@@ -82,24 +120,10 @@ export async function reserveBudget(
           sql`${budgetReservations.reservedAt} >= ${startOfMonth}`,
         ),
       );
-
     const monthlyUsed = Number(monthlyRows[0]?.total ?? 0);
     checkAlerts(tenantId, monthlyUsed, config.monthlyTokenLimit, 'monthly');
 
-    if (monthlyUsed + config.reservationSize > config.monthlyTokenLimit) {
-      return { reserved: false, reason: 'Monthly token budget exhausted' };
-    }
-
-    const [reservation] = await db
-      .insert(budgetReservations)
-      .values({
-        tenantId,
-        tokensReserved: config.reservationSize,
-        status: 'pending',
-      })
-      .returning();
-
-    return { reserved: true, reservationId: reservation.id };
+    return { reserved: true, reservationId };
   } catch {
     return { reserved: false, reason: 'Budget check failed (database unavailable)' };
   }

@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { RoleSchema } from '@botbad/contracts';
-import { createMockJwt } from '../middleware/auth.js';
+import { signJwt } from '../middleware/auth.js';
 
 const loginInput = z.object({
   userId: z.string().uuid(),
@@ -21,7 +21,7 @@ authRoutes.post('/login', async (c) => {
     );
   }
 
-  const token = createMockJwt(parsed.data);
+  const token = signJwt(parsed.data);
   return c.json({ token });
 });
 

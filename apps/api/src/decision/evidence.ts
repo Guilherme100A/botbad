@@ -145,35 +145,23 @@ function matchesPtrSuffix(hostname: string, validSuffixes: string[]): boolean {
   });
 }
 
+function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
+  return new Promise<T>((resolve) => {
+    const timer = setTimeout(() => resolve(fallback), ms);
+    promise.then(
+      (val) => { clearTimeout(timer); resolve(val); },
+      () => { clearTimeout(timer); resolve(fallback); },
+    );
+  });
+}
+
 async function dnsReverseWithTimeout(ip: string): Promise<string[]> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), DNS_TIMEOUT_MS);
-  try {
-    const hostnames = await dns.reverse(ip);
-    return hostnames;
-  } catch {
-    return [];
-  } finally {
-    clearTimeout(timer);
-  }
+  return withTimeout(dns.reverse(ip), DNS_TIMEOUT_MS, []);
 }
 
 async function dnsResolveWithTimeout(hostname: string, ipVersion: 4 | 6): Promise<string[]> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), DNS_TIMEOUT_MS);
-  try {
-    if (ipVersion === 4) {
-      const records = await dns.resolve4(hostname);
-      return records;
-    } else {
-      const records = await dns.resolve6(hostname);
-      return records;
-    }
-  } catch {
-    return [];
-  } finally {
-    clearTimeout(timer);
-  }
+  const lookup = ipVersion === 4 ? dns.resolve4(hostname) : dns.resolve6(hostname);
+  return withTimeout(lookup, DNS_TIMEOUT_MS, []);
 }
 
 export async function verifyBotIdentity(

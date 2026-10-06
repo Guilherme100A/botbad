@@ -6,13 +6,6 @@ const routerRoutes = new Hono();
 routerRoutes.get('/r/:slug', async (c) => {
   const slug = c.req.param('slug');
 
-  const peerIp =
-    c.req.header('x-real-ip') ??
-    c.req.header('x-forwarded-for')?.split(',')[0]?.trim() ??
-    '127.0.0.1';
-
-  const userAgent = c.req.header('user-agent') ?? '';
-
   const headers: Record<string, string | undefined> = {
     'user-agent': c.req.header('user-agent'),
     'accept': c.req.header('accept'),
@@ -23,8 +16,8 @@ routerRoutes.get('/r/:slug', async (c) => {
 
   const result = await executePipeline({
     slug,
-    peerIp,
-    userAgent,
+    peerIp: c.env?.remoteAddr ?? '127.0.0.1',
+    userAgent: c.req.header('user-agent') ?? '',
     headers,
   });
 
