@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { useAuth } from '../context/AuthContext.js';
 import { engineStatus } from '../mock/data.js';
 import { MatrixRain } from './MatrixRain.js';
+import { HxLogo } from './HxLogo.js';
 import { useTheme } from '../context/ThemeContext.js';
 
 const SPOT_SELECTOR = '.card, .hero, .campaign-card, .list, .info-item, .sim-card, .table-wrap';
@@ -93,7 +94,6 @@ export function BackgroundFx() {
           color={rain.color}
           headColor={rain.head}
           glow={rain.glow}
-          glyphs={rain.glyphs}
         />
       )}
       <div className="bg-grid" />
@@ -107,7 +107,7 @@ export function BackgroundFx() {
 export function Logo() {
   return (
     <>
-      <img className="brand-logo" src="/hx-logo.png" alt="HX" />
+      <HxLogo className="brand-logo" />
       <span className="sidebar-logo-text">Jev router</span>
     </>
   );

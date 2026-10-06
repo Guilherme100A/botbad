@@ -6,8 +6,6 @@ export interface RainConfig {
   glow: number;
   density: number;
   interval: number;
-  /** Characters to rain; defaults to 0–9. */
-  glyphs?: string;
 }
 
 export interface Theme {
@@ -24,8 +22,8 @@ export interface Theme {
 /** Visual styles. Colors, type, shape and background effects live in themes.css under [data-theme]. */
 export const THEMES: Theme[] = [
   {
-    id: 'fusion', name: 'Fusão HX', desc: 'Cromado, neon e chuva binária', meta: '#0a0d0a',
-    rain: { color: '#28b812', head: '#e6ffd9', glow: 12, density: 0.6, interval: 65, glyphs: '01' },
+    id: 'fusion', name: 'Fusão', desc: 'Soft + Cyberpunk + Matrix', meta: '#0c100e',
+    rain: { color: '#14b04e', head: '#ff2a6d', glow: 12, density: 0.55, interval: 70 },
   },
   {
     id: 'matrix', name: 'Matrix', desc: 'Vidro escuro e chuva neon', meta: '#000000',

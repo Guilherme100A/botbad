@@ -146,22 +146,17 @@ select option { background: var(--surface-2); color: var(--text); }
 }
 .sidebar-logo-icon svg { width: 14px; height: 14px; color: var(--accent-ink); }
 
-/* Brand mark: the HX artwork, cropped to a rounded tile */
+/* Brand mark: vector HX (components/HxLogo.tsx) */
 .brand-logo {
-  width: 34px; height: 34px;
+  width: 44px; height: 32px;
   flex-shrink: 0;
-  border-radius: 9px;
-  object-fit: cover;
-  object-position: 50% 52%;
-  background: #000;
-  box-shadow: 0 0 18px rgba(var(--accent-rgb), 0.3);
+  overflow: visible;
 }
-.brand-logo-lg {
-  width: 132px; height: 112px;
-  border-radius: 22px;
-  object-fit: cover;
-  box-shadow: 0 0 40px rgba(var(--accent-rgb), 0.35), 0 20px 50px rgba(0, 0, 0, 0.6);
+.brand-logo .hx-x { animation: hx-pulse 3.2s ease-in-out infinite; }
+@keyframes hx-pulse {
+  50% { filter: drop-shadow(0 0 6px rgba(93, 255, 31, 0.75)); }
 }
+.brand-logo-lg { width: 168px; height: 120px; }
 .sidebar-logo-text {
   font-family: var(--font-display);
   font-size: 16px;
@@ -737,7 +732,7 @@ tbody tr:hover td { background: var(--fill-1); }
   }
   .topbar .sidebar-logo-text { font-size: 15px; }
   .topbar .sidebar-logo-icon { width: 22px; height: 22px; border-radius: 6px; }
-  .topbar .brand-logo { width: 28px; height: 28px; border-radius: 7px; }
+  .topbar .brand-logo { width: 36px; height: 26px; }
   .hamburger { display: flex; }
 
   .page-header { padding: 28px 16px 0; }

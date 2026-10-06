@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 
-const DIGITS = '0123456789';
+const GLYPHS = '0123456789';
 
 interface MatrixRainProps {
   className?: string;
@@ -16,8 +16,6 @@ interface MatrixRainProps {
   headColor?: string;
   /** Neon bloom around glyphs, in px. 0 disables. */
   glow?: number;
-  /** Characters the rain draws from. */
-  glyphs?: string;
 }
 
 /** Low-key digital rain on a transparent canvas. Decorative; respects reduced motion, pauses off-screen. */
@@ -29,7 +27,6 @@ export function MatrixRain({
   color = '#00ff6a',
   headColor = '#d8ffe6',
   glow = 0,
-  glyphs = DIGITS,
 }: MatrixRainProps) {
   const ref = useRef<HTMLCanvasElement>(null);
 
@@ -72,7 +69,7 @@ export function MatrixRain({
         if (!active[i]) continue;
         const y = (drops[i] ?? 0) * size;
         ctx.fillStyle = Math.random() > 0.975 ? headColor : color;
-        ctx.fillText(glyphs.charAt((Math.random() * glyphs.length) | 0), i * size, y);
+        ctx.fillText(GLYPHS.charAt((Math.random() * GLYPHS.length) | 0), i * size, y);
         if (y > canvas.clientHeight && Math.random() > 0.975) {
           drops[i] = 0;
           active[i] = Math.random() < density;
@@ -92,7 +89,7 @@ export function MatrixRain({
       io.disconnect();
       window.removeEventListener('resize', resize);
     };
-  }, [size, interval, density, color, headColor, glow, glyphs]);
+  }, [size, interval, density, color, headColor, glow]);
 
   return <canvas ref={ref} className={className} aria-hidden="true" />;
 }

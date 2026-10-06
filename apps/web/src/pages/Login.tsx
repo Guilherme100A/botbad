@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext.js';
 import { BackgroundFx } from '../components/Layout.js';
+import { HxLogo } from '../components/HxLogo.js';
 
 export function Login() {
   const { login, loading } = useAuth();
@@ -28,7 +29,7 @@ export function Login() {
       <BackgroundFx />
       <div className="login-card">
         <div className="login-logo">
-          <img className="brand-logo brand-logo-lg" src="/hx-logo.png" alt="HX" />
+          <HxLogo className="brand-logo brand-logo-lg" />
           <h1 className="login-title">Jev router</h1>
           <p className="login-sub">Entre para continuar</p>
         </div>

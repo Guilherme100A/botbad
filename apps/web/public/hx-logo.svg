@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 140 100">
+  <defs>
+    <linearGradient id="c" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="0.3" stop-color="#e6ebe8"/>
+      <stop offset="0.48" stop-color="#8b958f"/>
+      <stop offset="0.55" stop-color="#c4ccc7"/>
+      <stop offset="0.78" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#9da7a1"/>
+    </linearGradient>
+    <linearGradient id="n" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#e4ffa8"/>
+      <stop offset="0.35" stop-color="#6dff2a"/>
+      <stop offset="1" stop-color="#1fbf08"/>
+    </linearGradient>
+    <filter id="g" x="-25%" y="-25%" width="150%" height="150%">
+      <feGaussianBlur stdDeviation="2.6" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <g filter="url(#g)" fill="url(#n)" stroke="#0a0e0b" stroke-width="1.4" stroke-linejoin="round">
+    <path d="M58 1 L80 5 L137 90 L131 99 L119 97 L66 13 Z"/>
+    <path d="M139 1 L134 15 L82 97 L62 99 L67 89 L121 5 Z"/>
+  </g>
+  <g transform="translate(26 0) skewX(-14)">
+    <path d="M6 12 H22 V40 H38 V12 H54 V88 H38 V56 H22 V88 H6 Z" fill="none" stroke="#39ff14" stroke-width="6.5" stroke-linejoin="round" filter="url(#g)"/>
+    <path d="M6 12 H22 V40 H38 V12 H54 V88 H38 V56 H22 V88 H6 Z" fill="url(#c)" stroke="#0a0e0b" stroke-width="2.4" stroke-linejoin="round"/>
+  </g>
+</svg>
